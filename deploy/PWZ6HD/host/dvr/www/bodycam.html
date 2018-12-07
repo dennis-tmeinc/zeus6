@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="content-type" />
+<meta content="Dennis Chen" name="author" />
+<!--#exec cmd="cgi/pagevalue"-->
+<link href="eagle3.css" rel="stylesheet" type="text/css" />
+<title>Camera Setup Page</title>
+<link href="js/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/jquery-ui.js"></script>
+<script type="text/javascript" src="js/eagle3.js"></script>
+
+<script type="text/javascript">
+
+$(function(){
+    var system_value = <!--#include file="system_value" --> ;
+    var num_bodycamera = system_value.totalbodycam ;
+
+    if( num_bodycamera < 1 ) {
+        $("div#bodycamsel").text("No body camera number defined, please set number of body cameras on system page!");
+        $("table").hide();
+    }
+    else {
+        var html = "" ;
+        for(var i=1; i<=num_bodycamera; i++ ) {
+            html += "<option value=\"" +i+ "\">Body Camera "+i+"</option>" ;
+        }
+        $( "select#id_nextbodycamid" ).html(html);
+    }
+
+    function loadData( xid ) {
+        $("form")[0].reset();
+        $("input[name=\"bodycamid\"]").val( xid );
+        $.getJSON( "bodycam_value_"+xid , {"s":Math.random()}, function(data){
+            if( data.bodycamid == xid ) {
+                if( sessionStorage ) {
+                    sessionStorage.bodycamid = xid;
+                }
+                data.nextbodycamid = xid ;
+                JSONinitfield( data );
+                $("select#id_nextbodycamid" ).selectmenu( "refresh" );
+            }
+        });
+    }
+
+    var camid = 1 ;
+    if( sessionStorage && sessionStorage.bodycamid ) {
+        camid = sessionStorage.bodycamid ;
+        if( camid <= 0 || camid >num_bodycamera ) {
+            camid = 1 ;
+        }
+    }
+    loadData( camid );
+
+    $( "select#id_nextbodycamid" ).selectmenu({
+        width: 240,
+        change: function(){
+            // on_bodycam_click();
+            var nid = $( "select#id_nextbodycamid" ).val();
+            var formvalue = $("form").serialize();
+            $.post("cgi/pagevalue", formvalue, function(){
+                loadData( nid );
+            });
+        }
+    });
+
+    $("input#bodycam").attr( "checked", "checked" ) ;
+
+});
+</script>
+
+</head>
+
+<body>
+<!--#include file="header.i"--><!--#include file="mainmenu.i"-->
+
+<p>&nbsp;</p>
+
+<div style="padding-left: 80px;" id="bodycamsel">
+    <select name="nextbodycamid" id="id_nextbodycamid" value="1">
+        <option value="1"></option>
+    </select>
+</div>
+
+<form id="dvrsetup" enctype="application/x-www-form-urlencoded" method="post" action="apply.html">
+
+<input name="page" value="bodycam" type="hidden" />
+<input id="id_bodycam" name="bodycamid" value="1" type="hidden" />
+
+<table cellspacing="5">
+
+<tr>
+<td class="col1"><label for="bcam_enable">Enable:</label> </td>
+<td>
+<input name="bcam_enable" id="bcam_enable" value="on" type="checkbox" />
+</td>
+</tr>
+
+<tr>
+<td class="col1">Body Camera IP Address:</td>
+<td><input name="bcam_ip" id="bcam_ip" /></td>
+</tr>
+
+<tr>
+<td class="col1"><label for="bcam_trigger">Trigger PW Recording by Body Camera:</label> </td>
+<td>
+<input name="bcam_trigger" id="bcam_trigger" value="on" type="checkbox" />
+</td>
+</tr>
+
+<tr>
+<td class="col1"><label for="bcam_dvrtrigger">Trigger Body Camera Recording by PW:</label> </td>
+<td>
+<input name="bcam_dvrtrigger" id="bcam_dvrtrigger" value="on" type="checkbox" />
+</td>
+</tr>
+
+
+<tr>
+<td>&nbsp;&nbsp;</td>
+<td></td>
+</tr>
+
+<tr>
+<td>
+</td>
+<td> <input id="id_apply" value="Apply" type="submit" />
+</td>
+</tr>
+
+</table>
+</form>
+
+</body>
+</html>

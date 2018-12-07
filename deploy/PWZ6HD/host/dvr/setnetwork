@@ -1,0 +1,206 @@
+#!/bin/sh
+
+export LD_LIBRARY_PATH=/davinci/dvr/lib
+export PATH=/davinci/dvr:/davinci:/bin:/sbin:/usr/bin:/usr/sbin
+
+cd /davinci/dvr
+
+# set ether net
+if [ -e /sys/class/net/eth0 ] ; then
+    eth_ip=`cfg get network eth_ip`
+    eth_mask=`cfg get network eth_mask`
+    eth_broadcast=`cfg get network eth_broadcast`
+    if [ -z "$eth_ip" ] ; then
+        eth_ip=192.168.1.100
+        eth_mask=255.255.255.0
+        eth_broadcast=192.168.1.255
+    fi
+
+    ifconfig eth0 down
+    ifconfig eth0 $eth_ip netmask $eth_mask broadcast $eth_broadcast up
+
+    # check if to use dhcp
+    eth_dhcp=`cfg get network eth_dhcp`
+    if [ -z "$eth_dhcp" ]; then
+      eth_dhcp=0
+    fi
+    if [ "$eth_dhcp" -gt 0 ]; then
+        if [ -e /var/run/edhcpc.pid ]; then
+            kill `cat /var/run/edhcpc.pid`
+            sleep 1
+        fi
+        udhcpc -i eth0 -p /var/run/edhcpc.pid -b -q -s /davinci/dvr/udhcpc.script
+    fi
+
+fi
+
+# wifi operate mode, 0=disable, 1:station mode, 2:AP mode
+if [ -z "$1" ]; then
+    wifi_mode=`cfg get network wifi_mode`
+else
+    wifi_mode=$1
+fi
+
+if [ -z "$wifi_mode" ] ; then
+    wifi_mode=0
+fi
+
+if [ "$wifi_mode" -eq 2 ]; then
+    # Start AP mode
+
+    # remove udhcpc if it is running
+    if [ -e /var/run/udhcpc.pid ]; then
+        kill `cat /var/run/udhcpc.pid`
+    fi
+
+    # kill wap_supplicant if it is running
+    if [ ! -f /var/run/wpa_cli.pid ]; then
+        kill `cat /var/run/wpa_cli.pid`
+    fi
+    if [ -f /var/run/wpa_supplicant.pid ]; then
+        kill `cat /var/run/wpa_supplicant.pid`
+    fi
+
+    # remode station driver
+    ifconfig wlan0 down
+    rmmod mt7662u_sta
+
+    # load AP mode driver
+    if [ ! -e /sys/class/net/wlan0 ] ; then
+        insmod /mnt/nand/dvr/drivers/mt7662u_ap.ko
+    fi
+
+    # load hostapd
+    if [ -e /sys/class/net/wlan0 ] ; then
+
+        ap_ip=`cfg get network ap_ip`
+        ap_mask=`cfg get network ap_mask`
+        ap_broadcast=`cfg get network ap_broadcast`
+        ap_dhcpstart=`cfg get network ap_dhcpstart`
+        ap_dhcpend=`cfg get network ap_dhcpend`
+        if [ -z "$ap_ip" ] ; then
+            ap_ip=192.168.3.1
+            ap_mask=255.255.255.0
+            ap_broadcast=192.168.3.255
+            ap_dhcpstart=192.168.3.200
+            ap_dhcpend=192.168.3.254
+        fi
+
+        ifconfig wlan0 down
+        ifconfig wlan0 $ap_ip netmask $ap_mask broadcast $ap_broadcast up
+
+        # start hostapd
+        if [ ! -e /var/run/hostapd.conf ] ; then
+            cp /davinci/dvr/hostapd.conf  /var/run/hostapd.conf
+        fi
+        ap_ssid=`cfg get network ap_ssid`
+        if [ -n "$ap_ssid" ]; then
+            cfg -f/var/run/hostapd.conf set nil ssid "$ap_ssid"
+        fi
+
+        ap_key=`cfg get network ap_key`
+        if [ -n "$ap_key" ]; then
+            cfg -f/var/run/hostapd.conf set nil wpa_passphrase "$ap_key"
+        fi
+
+        ap_channel=`cfg get network ap_channel`
+        if [ -n "$ap_channel" ]; then
+            cfg -f/var/run/hostapd.conf set nil channel "$ap_channel"
+        fi
+
+        # remove host apd if running
+        if [ -e /var/run/hostapd.pid ]; then
+            # let udhcpd reload config file
+            kill -HUP `cat /var/run/hostapd.pid`
+        else
+            # start hostapd
+            /davinci/dvr/hostapd -B -P/var/run/hostapd.pid /var/run/hostapd.conf
+
+            # start udhcpd, (looks like this is required for bodycam connection)
+            echo "" /var/run/udhcpd.leases
+            cp  /davinci/dvr/udhcpd.conf  /var/run/udhcpd.conf
+            echo  "start $ap_dhcpstart" >> /var/run/udhcpd.conf
+            echo  "end $ap_dhcpend" >> /var/run/udhcpd.conf
+            echo  "option router $ap_ip" >> /var/run/udhcpd.conf
+            /davinci/dvr/udhcpd /var/run/udhcpd.conf
+        fi
+
+    fi
+
+elif [ "$wifi_mode" -eq 1 ]; then
+    # start station mode
+
+    # kill hostapd if running
+    if [ -e /var/run/hostapd.pid ]; then
+        # kill udhcpd if it is running
+        killall udhcpd
+        kill `cat /var/run/hostapd.pid`
+        ifconfig wlan0 down
+        rmmod mt7662u_ap
+    fi
+
+    # load station mode driver
+    if [ ! -e /sys/class/net/wlan0 ] ; then
+        insmod /mnt/nand/dvr/drivers/mt7662u_sta.ko
+    fi
+
+    if [ -e /sys/class/net/wlan0 ] ; then
+        wifi_ip=`cfg get network wifi_ip`
+        wifi_mask=`cfg get network wifi_mask`
+        wifi_broadcast=`cfg get network wifi_broadcast`
+        if [ -z "$wifi_ip" ] ; then
+            wifi_ip=192.168.3.100
+            wifi_mask=255.255.255.0
+            wifi_broadcast=192.168.3.255
+        fi
+
+        ifconfig wlan0 down
+        ifconfig wlan0 $wifi_ip netmask $wifi_mask broadcast $wifi_broadcast up
+
+        echo "ctrl_interface=/var/run/wpa_supplicant" > /var/run/wpa.conf
+        wpaconf
+
+        if [ -f /var/run/wpa_supplicant.pid ]; then
+            kill -HUP `cat /var/run/wpa_supplicant.pid`
+        else
+            #wpa_supplicant -Dwext -iwlan0 -P/var/run/wpa_supplicant.pid -c/var/run/wpa.conf -B
+            wpa_supplicant -iwlan0 -P/var/run/wpa_supplicant.pid -c/var/run/wpa.conf -B
+        fi
+
+        if [ ! -f /var/run/wpa_cli.pid ]; then
+            wpa_cli -B -i wlan0 -P/var/run/wpa_cli.pid -a /mnt/nand/dvr/wpa_cli-action.sh
+        fi
+
+    fi
+else
+    # disable wifi
+
+    # killall other mode process
+    # remove udhcpc if it is running
+
+    ifconfig wlan0 down
+
+    if [ -f /var/run/wpa_supplicant.pid ]; then
+        killall udhcpc
+        kill `cat /var/run/wpa_supplicant.pid`
+        rmmod mt7662u_sta
+    fi
+
+    if [ -e /var/run/hostapd.pid ]; then
+        # kill udhcpd if it is running
+        killall udhcpd
+        kill `cat /var/run/hostapd.pid`
+        rmmod mt7662u_ap
+    fi
+
+fi
+
+route del default
+# add multicast route for ip camera detection
+route add -net 224.0.0.0 netmask 240.0.0.0 dev eth0
+
+gateway=`cfg get network gateway`
+if [ -z "$gateway" ]; then
+    gateway=192.168.1.1
+fi
+route add default gw $gateway

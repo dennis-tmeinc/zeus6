@@ -1,0 +1,58 @@
+Hi Dennis, Bill,
+
+Attached please find the software package for AP mode wifi(WUBM-273ACN) on Zeus8.
+
+******************* Attention ********************
+remove all commands related to STA mode
+1. Please don't use mt7662u_sta.ko when using AP mode
+2. wpa_suppicant, wpa_cli, wpaconf(dvrinit.sh, setnetwork)
+*************************************************
+
+[wifi driver]
+Necessary files:
+1. mt7662u_ap.ko
+2. RT2870AP.dat (should be in /mnt/nand/dvr/lib/firmware)
+
+insmod /mnt/nand/dvr/drivers/mt7662u_ap.ko
+do "ifconfig wlan0 down" before rmmod
+
+[hostapd]
+Necessary files: hostapd, hostapd.conf (dynamically created)
+
+1. create dynamically hostapd.conf depending on Wifi SSID setting.
+   See the sample file.
+interface=wlan0
+ssid=PWHOST # change this value
+country_code=US
+ieee80211d=1
+hw_mode=g
+channel=1 # can be changed
+macaddr_acl=0
+auth_algs=1
+wpa=3
+wpa_passphrase=pwpassword # change this value
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP CCMP
+rsn_pairwise=CCMP
+2. make sure mt7662u_ap.ko driver is loaded
+3. ifconfig wlan0 192.168.x.x (e.g 192.168.3.1, should be same subnet as DHCP)
+4. start daemon with the hostapd.conf file path
+   LD_LIBRARY_PATH=/mnt/nand/dvr/lib /mnt/nand/dvr/hostapd -B -P /var/dvr/hostapd.pid /var/run/hostapd.conf
+5. Before you kill hostapd, you have to do "ifconfig wlan0 down" first. If not, wifi driver will go into an infinite loop.
+
+[DHCP server]
+Necessary files: udhcpd, udhcpd.conf(dynamically created)
+
+Our bodycam will always wait for DHCP IP assignment even if it is using static IP. So, we offer DHCP service just to make it happy, and it will make it easier to test with laptops, cell phones, etc.
+
+1. create dynamically udhcpd.conf depending on Wifi IP setting.
+   See the sample file.
+     start 192.168.3.200 # change this value
+     end 192.168.3.254 # change this value
+     interface wlan0
+2. start DHCP server daemon
+   /mnt/nand/dvr/udhcpd /var/run/udhcpd.conf
+
+Best regards,
+
+Harrison

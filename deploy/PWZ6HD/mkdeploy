@@ -1,0 +1,147 @@
+#!/bin/sh
+
+if [ $# -lt 2 ]; then
+  echo 'Usage mkdeploy <APPID> <boardnumber>'
+  exit 1
+fi
+
+DEPROOT=$PWD
+BASEROOT=${DEPROOT}/../..
+PATH=${BASEROOT}/deploy/util:${PATH}
+
+if [ -f ${BASEROOT}/release ] ; then
+RELEASE=`cat ${BASEROOT}/release`
+else
+RELEASE=`date +%y.%m%d.%H`
+fi
+
+OUTPUTDIR=${DEPROOT}/${RELEASE}
+
+appid=$1
+
+RELEASEFILES='
+    dvrsvr/dvrsvr
+    dvrsvr/libfbdraw.so
+    dvrtime/dvrtime
+    eaglehost/eaglehost
+    glog/glog
+    ioprocess/ioprocess
+    ioprocess/devicepower
+    ioprocess/panelled
+    ioprocess/buzzer
+    tdev/tdevd
+    tdev/tdevmount
+    dhcp/udhcpc
+    usbgenkey/usbcheck
+    tmeft/tmefile
+    volumeid/md5check
+    volumeid/volumeid
+    cfg/cfg
+    tab102/tab102
+    smartupload/smartftp
+    fw_env/fw_printenv
+    lpc21isp/lpc21isp
+    rconn/rconn
+    zdaemon/zdaemon
+    fat32vol/fat32vol
+    httpd/eaglehttpd
+    bodycamd/bodycamd
+'
+
+CGIFILES='
+ /httpd/getsetup/getsetup
+ /httpd/getsetup/applysetup
+ /httpd/cfgdown/cfgdown.cgi
+ /httpd/cfgdown/cfgreport
+ /httpd/cfgdown/dvrstatus.cgi
+ /httpd/cfgdown/gcal.cgi
+ /httpd/cfgdown/gcrash.cgi
+ /httpd/eagle_setup/cfgupload
+ /httpd/eagle_setup/firmwareupd
+ /httpd/eagle_setup/login
+ /httpd/eagle_setup/loginx
+ /httpd/eagle_setup/mcufwupd
+ /httpd/eagle_setup/mfid
+ /httpd/eagle_setup/pagevalue
+ /httpd/livecam/mp4live
+'
+
+if [ ${appid} = "clean" ]; then
+
+# clean host binary files
+    echo "Clean dvr host programs"
+    cd ${DEPROOT}/host/dvr
+    for rfile in $RELEASEFILES ; do
+        BASE=`basename ${rfile}`
+        rm ${BASE}
+    done
+
+    echo "Clean dvr web cgi programs"
+    cd ${DEPROOT}/host/dvr/www/cgi
+    for rfile in $CGIFILES ; do
+        BASE=`basename ${rfile}`
+        rm ${BASE}
+    done
+
+    exit 0
+fi
+
+if [ -z $2 ] ; then
+  boardnumber=1
+else
+  boardnumber=$2
+fi
+
+mkdir ${OUTPUTDIR}
+
+firmwareid=${appid}.1.0.${RELEASE}
+echo "Firmware ID: " $firmwareid
+
+cd ${DEPROOT}
+echo copy sfx files
+cp -v ${BASEROOT}/sfx/sfx .
+cp -v ${BASEROOT}/sfx/mksfx .
+${STRIP} sfx
+
+cd ${DEPROOT}/host/ID
+echo ${boardnumber} > BOARDNUM
+echo ${appid} > APPID
+echo 1 > BOARDID
+
+echo Building Host deploy firmware.
+cd ${DEPROOT}/host
+cp -v ${BASEROOT}/dosfsck_check/dosfsckcheck .
+
+cd ${DEPROOT}/host/dvr
+echo copy dvr host files
+for rfile in $RELEASEFILES ; do
+    BASE=`basename ${rfile}`
+    cp -v ${BASEROOT}/${rfile} .
+    ${STRIP} ${BASE}
+done
+
+echo "Copy web files..."
+
+# cgi files
+mkdir www
+cd www
+mkdir cgi
+cd cgi
+for cfile in $CGIFILES ; do
+    BASE=`basename ${cfile}`
+    cp -v ${BASEROOT}${cfile} .
+    ${STRIP} ${BASE}
+done
+
+cd ${DEPROOT}/host
+
+echo Building Host deploy firmware.
+echo ${firmwareid} > dvr/firmwareid
+${DEPROOT}/mksfx ${DEPROOT}/sfx sfxlist.dep ${OUTPUTDIR}/HOST_DEP_${firmwareid}.FW
+
+echo Building Host update firmware.
+${DEPROOT}/mksfx ${DEPROOT}/sfx sfxlist.upd ${OUTPUTDIR}/HOST_${firmwareid}.FW
+
+
+echo Finish!
+

@@ -1,0 +1,9 @@
+#!/bin/sh
+
+export LD_LIBRARY_PATH=/davinci/dvr/lib
+export PATH=/davinci/dvr:/davinci:/bin:/sbin:/usr/bin:/usr/sbin
+
+cd /davinci/dvr
+if [ -n "$interface" -a -n "$ip" -a -n "$subnet" ] ; then
+    ifconfig $interface $ip netmask $subnet up
+fi

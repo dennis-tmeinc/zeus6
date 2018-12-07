@@ -1,0 +1,53 @@
+Hi Bill, Dennis,
+
+Please apply the following changes to Z8 DVR firmware image.
+You need to update the production's programming station 
+
+PD has one miniZeusHD system with this change already applied if you want to have a look.
+
+------
+
+To add support for new 802.11ac wifi module to Zeus8 (mini, PW, etc)
+
+Create a new user2.jffs2.img follwing the below instructions
+The new image will support both old and new wifi modules
+
+1. dvrinit.sh
+   remove "-Dwext" in the following line 
+   LD_LIBRARY_PATH=/mnt/nand/dvr/lib wpa_supplicant -iwlan0 -c/var/run/wpa.conf -B
+
+2. /mnt/nand/dvr/drivers
+   rm drivers/rt* (rt2x00lib.ko, rt2x00usb.ko, rt73usb.ko)
+   copy mt7662u_sta.ko (attached)
+
+3. edit drivers/wifi.sh
+   #insmod /mnt/nand/dvr/drivers/rt2x00lib.ko
+   #insmod /mnt/nand/dvr/drivers/rt2x00usb.ko
+   #insmod /mnt/nand/dvr/drivers/rt73usb.ko
+   insmod /mnt/nand/dvr/drivers/mt7662u_sta.ko
+
+4. /mnt/nand/dvr/lib/firmware
+   copy RT2870STA.dat to this folder (attached)
+   delete rt73.bin
+   There should be RT2870STA.dat and htc_9271.fw in this folder
+
+*** NOTE ***
+a. For DHCP support on wifi
+   add this in dvr.conf (see wpa_cli-action.sh)
+   [network]
+   wifi_proto=1
+
+b. For static IP on wifi
+   add this in dvr.conf (see wpa_cli-action.sh)
+   [network]
+   wifi_proto=0
+   wifi_ip=192.168.3.100
+   wifi_mask=255.255.255.0
+   
+   or
+   change wpa_cli-action.sh so that it can read these information.
+   ex)
+        wifi_ip=`cat /mnt/nand/dvr/wifi_ip`
+        wifi_mask=`cat /mnt/nand/dvr/wifi_mask`
+        wifi_brd=`cat /mnt/nand/dvr/wifi_broadcast`
+

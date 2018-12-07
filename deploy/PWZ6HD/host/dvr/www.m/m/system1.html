@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<title>PW - Network Settings</title>
+	<link rel="shortcut icon" href="favicon.ico">
+
+	<link rel="stylesheet" href="/js/jquery.mobile.css" />
+	<script src="/js/jquery.js"></script>
+	<script src="/js/jquery.mobile.js"></script>
+
+	<script src="/js/pw.js"></script>
+
+	<style>
+		label {
+			text-align: right;
+		}
+	</style>
+</head>
+<body>
+<div data-role="page" id="setup_page">
+
+	<a href="http://www.247securityinc.com/" data-rel="external">
+		<img
+			alt="247 Security Inc."
+			src="/company.png" />
+	</a>
+
+	<div data-role="header">
+		<h1> System </h1>
+		<a href="#panel-overlay" class="ui-btn ui-corner-all ui-shadow ui-btn-icon-left ui-icon-gear">Menu</a>
+	</div><!-- /header -->
+
+	<div class="ui-content" role="main">
+
+    <form id="dvrsetup" enctype="application/x-www-form-urlencoded" method="post" action="apply.html">
+			<input name="page" value="system" type="text" />
+
+			<div class="ui-field-contain">
+				<label for="eth_ip">Manufacture ID # :</label>
+				<input type="text" readonly="true" name="mf_id" id="mf_id" value="" />
+			</div>
+			<div class="ui-field-contain">
+				<label for="vehicleid">Vehicle ID:</label>
+				<input type="text" name="vehicleid" id="vehicleid"/>
+			</div>
+			<div class="ui-field-contain">
+				<label for="district">District:</label>
+				<input type="text" name="district" id="district"/>
+			</div>
+			<div class="ui-field-contain">
+				<label for="unit">Unit #:</label>
+				<input type="text" name="unit" id="unit"/>
+			</div>
+			<div class="ui-field-contain">
+				<label for="adminpassword">Administrator Password:</label>
+				<input type="password" name="adminpassword" id="adminpassword" value="*****"/>
+			</div>
+
+			<div class="ui-field-contain">
+			</div>
+
+			<div class="ui-field-contain">
+				<label for="dvr_time_zone">Time Zone:</label>
+				<select size="1" name="dvr_time_zone" id="dvr_time_zone" onchange="ontimezonechange()" ><!--#include file="tz_option" --></select>
+			</div>
+			<div class="ui-field-contain">
+				<label for="custom_tz">Custom TZ:</label>
+				<input type="text" name="custom_tz" id="custom_tz"/>
+			</div>
+
+			<div class="ui-field-contain">
+			</div>
+
+		</form>
+
+	</div><!-- /content -->
+
+
+	<div data-role="panel" id="panel-overlay" data-display="overlay">
+		<ul data-role="listview">
+      <li data-icon="delete"><a data-rel="close">Close Menu</a></li>
+			<li><a href="system.html">System</a></li>
+			<li><a href="/test1.html">Camera</a></li>
+			<li><a href="bodycamera.html">Body Camera</a></li>
+			<li><a href="sensor.html">Sensor</a></li>
+			<li><a href="network.html">Network</a></li>
+			<li><a href="tools.html">Tools</a></li>
+			<li><a href="status.html">Status</a></li>
+		</ul>
+	</div>
+
+</div><!-- /page -->
+
+</body>
+</html>

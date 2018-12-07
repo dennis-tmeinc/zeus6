@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<meta content="text/html; charset=UTF-8" http-equiv="content-type" />
+<meta content="Dennis Chen" name="author" />
+<link href="eagle3.css" rel="stylesheet" type="text/css" />
+<title>Network Setup Page</title>
+<!--#exec cmd="cgi/pagevalue"-->
+<link href="js/jquery-ui.css" rel="stylesheet" type="text/css" />
+<script type="text/javascript" src="js/jquery.js"></script>
+<script type="text/javascript" src="js/jquery-ui.js"></script>
+<script type="text/javascript" src="js/eagle3.js"></script>
+<script type="text/javascript">
+
+$( function() {
+
+    function showsta() {
+        var wifimode = $("select#wifi_mode").val();
+        if( wifimode == 1 ) {
+            $(".wifi_ap").hide();
+            $(".wifi_sta").show();
+        }
+        else if( wifimode == 2 ) {
+            $(".wifi_ap").show();
+            $(".wifi_sta").hide();
+        }
+        else {
+            $(".wifi_ap").hide();
+            $(".wifi_sta").hide();
+        }
+    }
+
+    $("select#wifi_mode").change(showsta) ;
+
+    function showwifikey() {
+        if( $("input[name=\"wifi_showkey\"]").prop("checked") ) {
+            $("input#id_wifi_key").attr("type","text");
+        }
+        else {
+            $("input#id_wifi_key").attr("type","password");
+        }
+    }
+
+    $("input[name=\"wifi_showkey\"]").click(showwifikey);
+
+    function showapkey() {
+        if( $("input[name=\"ap_showkey\"]").prop("checked") ) {
+            $("input[name=\"ap_key\"]").attr("type","text");
+        }
+        else {
+            $("input[name=\"ap_key\"]").attr("type","password");
+        }
+    }
+    $("input[name=\"ap_showkey\"]").click(showapkey);
+
+    $.post( "network_value", function( data ) {
+        JSONinitfield( data );
+        showwifikey();
+        showapkey();
+        showsta();
+    }, "json");
+
+    $("input#network").attr( "checked", "checked" ) ;
+
+});
+
+</script>
+</head>
+<body>
+<!--#include file="header.i"--><!--#include file="mainmenu.i"-->
+<p>&nbsp;</p>
+<form id="dvrsetup" enctype="application/x-www-form-urlencoded" method="post" action="apply.html">
+<input name="page" value="network" type="hidden" />
+<table>
+<tbody>
+<tr>
+<td class="col1">Ethernet IP Address:</td>
+<td><input name="eth_ip" /> </td>
+</tr>
+<tr>
+<td class="col1">Ethernet Subnet Mask:</td>
+<td><input name="eth_mask" /> </td>
+</tr>
+
+<!--
+<tr>
+<td class="col1">Enable DHCP Client on Ethernet:</td>
+<td>
+<input name="eth_dhcpc" value="on" type="checkbox" />
+</td>
+</tr>
+-->
+
+<tr>
+<td></td>
+<td></td>
+</tr>
+
+<tr>
+<td class="col1">WiFi Operate Mode:</td>
+<td>
+<select name="wifi_mode" id="wifi_mode">
+    <option value="0">Disable</option>
+    <option value="1">Station Mode</option>
+    <option value="2">Access Point</option>
+</select>
+</td>
+</tr>
+
+<tr class="wifi_sta">
+<td class="col1">Wireless IP Address:</td>
+<td>
+<input name="wifi_ip" />
+</td>
+</tr>
+
+<tr class="wifi_sta">
+<td class="col1">Wireless Subnet Mask:</td>
+<td><input name="wifi_mask" /> </td>
+</tr>
+
+<tr class="wifi_sta">
+<td class="col1">Wireless Essid:</td>
+<td><input name="wifi_essid" /></td>
+</tr>
+
+<tr class="wifi_sta">
+<td class="col1">Wireless Security Mode:</td>
+<td>
+<select name="wifi_enc">
+    <option value="0">Open/None </option>
+    <option value="1">Open/WEP </option>
+    <option value="2">Shared/WEP </option>
+    <option value="3">Auto/WEP </option>
+    <option value="4">WPA-PSK/TKIP </option>
+    <option value="5">WPA-PSK/AES </option>
+    <option value="6">WPA2-PSK/TKIP </option>
+    <option value="7">WPA2-PSK/AES </option>
+</select>
+</td>
+</tr>
+
+<tr class="wifi_sta">
+<td class="col1">Wireless Key:</td>
+<td>
+<input name="wifi_key" id="id_wifi_key" type="password" />
+<input value="on" name="wifi_showkey" id="id_wifi_showkey" type="checkbox" />
+<label for="id_wifi_showkey">Show Key</label>
+</td>
+</tr>
+
+<tr class="wifi_sta">
+<td class="col1">Enable DHCP on Wireless Interface:</td>
+<td>
+<input name="wifi_dhcp" id="wifi_dhcp" type="checkbox" />
+</td>
+</tr>
+
+<tr class="wifi_ap">
+<td class="col1">Access Point SSID:</td>
+<td>
+<input name="ap_ssid" />
+</td>
+</tr>
+
+<tr class="wifi_ap">
+<td class="col1">Access Point Password:</td>
+<td>
+<input name="ap_key" />
+<input value="on" name="ap_showkey" id="ap_showkey" type="checkbox" />
+<label for="ap_showkey">Show Key</label>
+</td>
+</tr>
+
+<tr class="wifi_ap">
+<td class="col1">Access Point Channel:</td>
+<td><input name="ap_channel" type="number" min="1" max="11" value="1" /></td>
+</tr>
+
+
+<tr>
+<td class="col1">Smart Upload Server (Via Internet) :</td>
+<td><input name="smartserver" /> </td>
+</tr>
+
+<tr>
+</tr>
+
+<tr>
+<td class="col1">Default Gateway:</td>
+<td><input name="gateway_1" /> </td>
+</tr>
+
+<tr>
+</tr>
+
+<!--
+<tr>
+<td class="col1">Mobile App Internet Access:</td>
+<td>
+<input name="internetaccess" value="on" type="checkbox" />
+</td>
+</tr>
+
+<tr>
+<td class="col1">Internet Access Key:</td>
+<td><input name="internetkey" /> </td>
+</tr>
+-->
+
+<tr>
+<td> </td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td></td>
+</tr>
+<tr>
+<td></td>
+<td> <input id="id_apply" value="Apply" type="submit" />
+</td>
+</tr>
+</tbody>
+</table>
+</form>
+</body></html>
