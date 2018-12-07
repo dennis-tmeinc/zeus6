@@ -246,59 +246,45 @@ static int disk_removefile( const char * file264 )
 // return 2, deleted
 static int repairfile(const char *filename)
 {
-    dvrfile vfile;
-    
-printf("repairfile   %s\n", filename );
-    
-    if (vfile.open(filename, "r+") == 0) {	// can't open it
+	dvrfile vfile;
 
+	if (vfile.open(filename, "r+") == 0) // can't open it
+	{
+		dvr_log("Repair file open error: %s is deleted", filename);
+		disk_removefile(filename); // try delete it.
+		return 0;
+	}
 
-printf("repairfile 01  %s\n", filename );
-
-        dvr_log("Repair file open error: %s is deleted", filename);
-
-printf("repairfile 1  %s\n", filename );
-
-        disk_removefile( filename );		// try delete it.
-
-        return 0;
-    }
-
-printf("repairfile  2 %s\n", filename );
-
-    if( vfile.repair() ) {// success?
-
-printf("repairfile  3 %s\n", filename );
-
-        vfile.close();
-        dvr_log("File repaired. <%s>", filename);		
-        return 1;
-    }
-    else {
-
-printf("repairfile  4 %s\n", filename );
-
-        // can't repair, delete it
-        vfile.close();
-        disk_removefile( filename );
-        dvr_log("Corrupt file deleted. <%s>", filename);
-        return 2;
-    }
+	if (vfile.repair()) // success?
+	{
+		vfile.close();
+		dvr_log("File repaired. <%s>", filename);
+		return 1;
+	}
+	else // can't repair, delete it
+	{
+		vfile.close();
+		disk_removefile(filename);
+		dvr_log("Corrupt file deleted. <%s>", filename);
+		return 2;
+	}
 }
 
 // try to repair partial lock files
-static int  repairepartiallock(const char * filename) 
+static int repairepartiallock(const char *filename)
 {
-    dvrfile vfile ;
-    int length, locklength ;
-    length = f264length (filename) ;
-    locklength = f264locklength (filename);
-    if( locklength>0 && locklength<length ) {       // partial locked file ?
-        if (vfile.open(filename, "r+") ) {	// can't open it
-            vfile.repairpartiallock() ;
-        }
-    }
-    return 0;
+	dvrfile vfile;
+	int length, locklength;
+	length = f264length(filename);
+	locklength = f264locklength(filename);
+	if (locklength > 0 && locklength < length) // partial locked file ?
+	{
+		if (vfile.open(filename, "r+")) // can't open it
+		{
+			vfile.repairpartiallock();
+		}
+	}
+	return 0;
 }
 
 // remove directories has no .264 files
@@ -306,36 +292,47 @@ static int  repairepartiallock(const char * filename)
 // return 0: empty, 1: .266 files found
 static int disk_rmempty264dir(char *tdir, int dirlevel)
 {
-	int f = 0 ;
-	int r ;
-	dir d( tdir ) ;
-	while( d.find() ) {
-		if( dirlevel <= 0 ) {
-			if( d.isdir() ) {
-				if( fnmatch( "_*_", d.filename(), 0 )==0 ) {
-					f+=disk_rmempty264dir( d.pathname(), 1 );
+	int f = 0;
+	int r;
+	dir d(tdir);
+	while (d.find())
+	{
+		if (dirlevel <= 0)
+		{
+			if (d.isdir())
+			{
+				if (fnmatch("_*_", d.filename(), 0) == 0)
+				{
+					f += disk_rmempty264dir(d.pathname(), 1);
 				}
-				else if( fnmatch( "FOUND.*", d.filename(), 0 )==0 ) {
+				else if (fnmatch("FOUND.*", d.filename(), 0) == 0)
+				{
 					// clear disk check files
-					disk_rmdir( d.pathname() );	
+					disk_rmdir(d.pathname());
 				}
-				else {
-					f+=disk_rmempty264dir( d.pathname(), 0 );
+				else
+				{
+					f += disk_rmempty264dir(d.pathname(), 0);
 				}
 			}
 		}
-		else if( dirlevel==1 || dirlevel==2 ) {
-			if( d.isdir() ) {
-				r = disk_rmempty264dir( d.pathname(), dirlevel+1 );
-				if( r== 0 ) {
-					disk_rmdir( d.pathname() );					
+		else if (dirlevel == 1 || dirlevel == 2)
+		{
+			if (d.isdir())
+			{
+				r = disk_rmempty264dir(d.pathname(), dirlevel + 1);
+				if (r == 0)
+				{
+					disk_rmdir(d.pathname());
 				}
-				f+=r ;
+				f += r;
 			}
 		}
-		else if( dirlevel>=3 ) {
-			if( d.isfile() && fnmatch( "CH*.266", d.filename(), 0 )==0 ) {
-				return 1 ;
+		else if (dirlevel >= 3)
+		{
+			if (d.isfile() && fnmatch("CH*.266", d.filename(), 0) == 0)
+			{
+				return 1;
 			}
 		}
 	}
@@ -346,43 +343,47 @@ static int disk_rmempty264dir(char *tdir, int dirlevel)
 // repaire all .264 files under dir
 static void disk_repair264(char *tdir)
 {
-    char * pathname ;
-    char * filename ;
-    dir dfind(tdir);
-    while( dfind.find() ) {
-        pathname = dfind.pathname();
-        filename = dfind.filename();
-        if( dfind.isdir() ) {
-            disk_repair264( pathname );
-        }
-        else if( dfind.isfile() && fnmatch( "CH*.266", filename, 0 )==0 ) 
-        {
-            if( strstr(filename, "_0_") ) {
-                repairfile(pathname);
-            }
-            else if( strstr(filename, "_L_") ) {
-                repairepartiallock(pathname) ;
-            }
-        }
-    }
+	char *pathname;
+	char *filename;
+	dir dfind(tdir);
+	while (dfind.find())
+	{
+		pathname = dfind.pathname();
+		filename = dfind.filename();
+		if (dfind.isdir())
+		{
+			disk_repair264(pathname);
+		}
+		else if (dfind.isfile() && fnmatch("CH*.266", filename, 0) == 0)
+		{
+			if (strstr(filename, "_0_"))
+			{
+				repairfile(pathname);
+			}
+			else if (strstr(filename, "_L_"))
+			{
+				repairepartiallock(pathname);
+			}
+		}
+	}
 }
 
 // fix all "_0_" files & delete non-local video files
 // disk: disk mount point
 static void disk_diskfix(char *disk)
 {
-    char pattern[512];
-    char * pathname ;
-    char * filename ;
-    
-    // disable watchdog, so system don't get reset while repairing files
-    dio_disablewatchdog();  
-    disk_repair264(disk);
-	disk_rmempty264dir(disk, 0);    
+	char pattern[512];
+	char *pathname;
+	char *filename;
+
+	// disable watchdog, so system don't get reset while repairing files
+	dio_disablewatchdog();
+	disk_repair264(disk);
+	disk_rmempty264dir(disk, 0);
 
 	// extra, remove all empty directoy
 	disk_rmemptydir(disk);
-    dio_enablewatchdog();
+	dio_enablewatchdog();
 }
 
 // get a list of .264 files, for play back list use
@@ -706,87 +707,97 @@ int get_base_dir(char *base, int size, char *busname_dir)
   return 0;
 }
 
-
 void formatflash(char *path)
 {
 	char base[256];
-    char devname[60];
-    char syscommand[80];  
-    char filename[256];
-    int ret;
-    char* ptemp;   
-    if(get_base_dir(base, sizeof(base), path))
-		return;   
-    ret=umount2(base,MNT_FORCE);   
-    if(ret<0)
-      return;
-    ptemp=&base[17];
-    sprintf(devname,"/dev/%s",ptemp);        
-    sprintf(syscommand,"/mnt/nand/mkdosfs -F 32 %s",devname);
-    dvr_log("syscommand:%s",syscommand);
-    ret=system(syscommand); 
-    if(ret>=0){
+	char devname[60];
+	char syscommand[80];
+	char filename[256];
+	int ret;
+	char *ptemp;
+	if (get_base_dir(base, sizeof(base), path))
+		return;
+	ret = umount2(base, MNT_FORCE);
+	if (ret < 0)
+		return;
+	ptemp = &base[17];
+	sprintf(devname, "/dev/%s", ptemp);
+	sprintf(syscommand, "/mnt/nand/mkdosfs -F 32 %s", devname);
+	dvr_log("syscommand:%s", syscommand);
+	ret = system(syscommand);
+	if (ret >= 0)
+	{
 		sleep(5);
-		mount(devname,base,"vfat",MS_MGC_VAL,"");
-		sprintf(filename,"%s/diskid",base);
-		FILE *fp=fopen(filename,"w");
-		if(fp){
-			fprintf(fp,"FLASH");
+		mount(devname, base, "vfat", MS_MGC_VAL, "");
+		sprintf(filename, "%s/diskid", base);
+		FILE *fp = fopen(filename, "w");
+		if (fp)
+		{
+			fprintf(fp, "FLASH");
 			fclose(fp);
 		}
-		mkdir(path,0777);	
-    }    
-    return;
+		mkdir(path, 0777);
+	}
+	return;
 }
 
 int disk_capacitycheck(char *path)
 {
-	int disksize=0;  	
-	int i;	
-	for(i=0;i<3;++i){
-	    disksize=disk_size(path);
-	    if(disksize>=MIN_DISK_SIZE)
-	      break;
-//            sleep(2);
-	}  
-	if(disksize<MIN_DISK_SIZE){
-	   return -1;
+	int disksize = 0;
+	int i;
+	for (i = 0; i < 3; ++i)
+	{
+		disksize = disk_size(path);
+		if (disksize >= MIN_DISK_SIZE)
+			break;
+		// sleep(2);
+	}
+	if (disksize < MIN_DISK_SIZE)
+	{
+		return -1;
 	}
 	return 0;
 }
 
-void FormatFlashToFAT32(char* diskname)
-{  
-    char devname[60];
-    int ret=0;
-    pid_t format_id;
-    char* ptemp;
-    FILE *fp;    
-    
-    ret=umount2(diskname,MNT_FORCE);
-    if(ret<0)
-      return;    
-    dvr_log("umounted:%s",diskname);
-    
-    ptemp=&diskname[17];
-    sprintf(devname,"/dev/%s",ptemp);      
-    format_id=fork();
-    if(format_id==0){     
-       execlp("/mnt/nand/mkdosfs", "mkdosfs", "-F","32", devname, NULL );  
-       exit(0);
-    } else if(format_id>0){    
-        int status=-1;
-        waitpid( format_id, &status, 0 ) ;   
-        if( WIFEXITED(status) && WEXITSTATUS(status)==0 ) {
-            ret=1 ;
-        }	
-    }    
-    if(ret>=0){
-	mount(devname,diskname,"vfat",MS_MGC_VAL,"");
-	dvr_log("%s is formated to FAT32",devname);	 
-    } else {
-        dvr_log("Format Flash failed"); 
-    }
+void FormatFlashToFAT32(char *diskname)
+{
+	char devname[60];
+	int ret = 0;
+	pid_t format_id;
+	char *ptemp;
+	FILE *fp;
+
+	ret = umount2(diskname, MNT_FORCE);
+	if (ret < 0)
+		return;
+	dvr_log("umounted:%s", diskname);
+
+	ptemp = &diskname[17];
+	sprintf(devname, "/dev/%s", ptemp);
+	format_id = fork();
+	if (format_id == 0)
+	{
+		execlp("/mnt/nand/mkdosfs", "mkdosfs", "-F", "32", devname, NULL);
+		exit(0);
+	}
+	else if (format_id > 0)
+	{
+		int status = -1;
+		waitpid(format_id, &status, 0);
+		if (WIFEXITED(status) && WEXITSTATUS(status) == 0)
+		{
+			ret = 1;
+		}
+	}
+	if (ret >= 0)
+	{
+		mount(devname, diskname, "vfat", MS_MGC_VAL, "");
+		dvr_log("%s is formated to FAT32", devname);
+	}
+	else
+	{
+		dvr_log("Format Flash failed");
+	}
 }
 
 #ifdef APP_PWZ5
@@ -836,110 +847,122 @@ static int disk_pw_curlogdisk = -1 ;
 static int disk_pw_autobackup_run = 0 ;
 
 // no: disk number,  DISK1 :0, DISK2: 1 ...
-static int  disk_pw_diskdev( int no, char * dev )
+static int disk_pw_diskdev(int no, char *dev)
 {
-	int l = 0 ;
-	FILE * fdev ;
-	char devfile[]="/var/dvr/disk1_device" ;
-	
-	devfile[13]= '1' + no ;
-	fdev = fopen( devfile, "r");
-	if( fdev ) {
-		if( fscanf( fdev, " %99s", (dev) ) > 0 ) {
+	int l = 0;
+	FILE *fdev;
+	char devfile[] = "/var/dvr/disk1_device";
+
+	devfile[13] = '1' + no;
+	fdev = fopen(devfile, "r");
+	if (fdev)
+	{
+		if (fscanf(fdev, " %99s", (dev)) > 0)
+		{
 			l = strlen(dev);
 		}
-		fclose( fdev );
+		fclose(fdev);
 	}
-	return l ;
-}	
+	return l;
+}
 
 // disknum :  0=DISK1, 1=DISK2
 // return 1 success
-int  disk_pw_checkdiskspace( int disknum ) 
+int disk_pw_checkdiskspace(int disknum)
 {
-	int mounted = 0 ;
-    struct statfs rstfs;
-    struct statfs stfs;
+	int mounted = 0;
+	struct statfs rstfs;
+	struct statfs stfs;
 
-    statfs("/var/dvr", &rstfs) ;
-    
-    if (statfs((char*)(pw_disk[disknum].disk), &stfs) == 0  && 
-		memcmp( &(rstfs.f_fsid), &(stfs.f_fsid), sizeof(stfs.f_fsid) ) != 0 )
+	statfs("/var/dvr", &rstfs);
+
+	if (statfs((char *)(pw_disk[disknum].disk), &stfs) == 0 &&
+		memcmp(&(rstfs.f_fsid), &(stfs.f_fsid), sizeof(stfs.f_fsid)) != 0)
 	{
-		pw_disk[disknum].freespace = stfs.f_bavail / ((1024 * 1024) / stfs.f_bsize); 
-		pw_disk[disknum].totalspace = stfs.f_blocks/ ((1024 * 1024) / stfs.f_bsize); 
-		pw_disk[disknum].reserved = (int) ( disk_mindiskspace_percent * pw_disk[disknum].totalspace / 100 ) ;
-		if( pw_disk[disknum].totalspace > 500 ) {
-			mounted = 1 ;
+		pw_disk[disknum].freespace = stfs.f_bavail / ((1024 * 1024) / stfs.f_bsize);
+		pw_disk[disknum].totalspace = stfs.f_blocks / ((1024 * 1024) / stfs.f_bsize);
+		pw_disk[disknum].reserved = (int)(disk_mindiskspace_percent * pw_disk[disknum].totalspace / 100);
+		if (pw_disk[disknum].totalspace > 500)
+		{
+			mounted = 1;
 		}
 	}
-	pw_disk[disknum].mounted = mounted ;	
-	return mounted ;
+	pw_disk[disknum].mounted = mounted;
+	return mounted;
 }
 
 // disknum: disk number,  DISK1=0, DISK2=1 ...
 // return 1 if mounted !
-int disk_pw_mount( int disknum )
+int disk_pw_mount(int disknum)
 {
-	string dev ;
-	string diskpath ;
-	if( disknum>2 || disk_pw_diskdev(disknum, dev.setbufsize(200) )<3 ) {
+	string dev;
+	string diskpath;
+	if (disknum > 2 || disk_pw_diskdev(disknum, dev.setbufsize(200)) < 3)
+	{
 		// disk not ready
-		return 0 ;
+		return 0;
 	}
-	sprintf( diskpath.setbufsize(300), "/var/dvr/disks" );
-	mkdir( diskpath, 0777 );
+	sprintf(diskpath.setbufsize(300), "/var/dvr/disks");
+	mkdir(diskpath, 0777);
 
-	sprintf( diskpath.setbufsize(300), "/var/dvr/disks/%s", (char *)dev );
-	mkdir( diskpath, 0777);
-	
+	sprintf(diskpath.setbufsize(300), "/var/dvr/disks/%s", (char *)dev);
+	mkdir(diskpath, 0777);
+
 	// sprintf(mountcmd.setbufsize(500), "mount -t vfat %s %s -o noatime,shortname=winnt", (char *)dev, (char *)diskpath );
 	// system( mountcmd );
-	string devpath ;
-	sprintf( devpath.setbufsize(100), "/dev/%s", (char*)dev );
-	if( mount( devpath, diskpath, "vfat", MS_NOATIME, "shortname=winnt" ) == 0 ) {
-		dvr_log( "Mount %s to %s", (char *)dev, (char *)diskpath );
+	string devpath;
+	sprintf(devpath.setbufsize(100), "/dev/%s", (char *)dev);
+	if (mount(devpath, diskpath, "vfat", MS_NOATIME, "shortname=winnt") == 0)
+	{
+		dvr_log("Mount %s to %s", (char *)dev, (char *)diskpath);
 	}
-	
-	pw_disk[disknum].disk =  (char *)diskpath ;
-	pw_disk[disknum].mounted =  0 ;
-	pw_disk[disknum].totalspace =  1 ;
-	pw_disk[disknum].freespace =  0 ;
-	pw_disk[disknum].reserved =  0 ;
-	pw_disk[disknum].full =  0 ;
-	pw_disk[disknum].l_len =  1 ;
-	pw_disk[disknum].n_len =  0 ;
-	
-	if( disk_pw_checkdiskspace( disknum ) ) {
-		disk_diskfix( pw_disk[disknum].disk ) ;
+
+	pw_disk[disknum].disk = (char *)diskpath;
+	pw_disk[disknum].mounted = 0;
+	pw_disk[disknum].totalspace = 1;
+	pw_disk[disknum].freespace = 0;
+	pw_disk[disknum].reserved = 0;
+	pw_disk[disknum].full = 0;
+	pw_disk[disknum].l_len = 1;
+	pw_disk[disknum].n_len = 0;
+
+	if (disk_pw_checkdiskspace(disknum))
+	{
+		disk_diskfix(pw_disk[disknum].disk);
 		// try reopen recording files, since new disk mounted!
 		rec_break();
 
 		// try rescan disk N/L space
-		disk_scanreq = 1 ;
-		return 1 ;
+		disk_scanreq = 1;
+		return 1;
 	}
-	return 0 ;
+	return 0;
 }
 
 // mount disks
 void disk_pw_checkmode()
 {
-	if( pw_disk[0].mounted == 0 ) {
-		if( disk_pw_mount(0) ) {
+	if (pw_disk[0].mounted == 0)
+	{
+		if (dio_curmode() >= APPMODE_RUN && disk_pw_mount(0))
+		{
 			dvr_log("Disk1 mounted.");
 		}
 	}
 
-	if( pw_disk[1].mounted == 0 ) {
-		if( disk_pw_mount(1) ) {
+	if (pw_disk[1].mounted == 0)
+	{
+		if (dio_curmode() >= APPMODE_RUN && disk_pw_mount(1))
+		{
 			dvr_log("Disk2 mounted.");
 		}
 	}
 
-	if( dio_curmode() == APPMODE_STANDBY && pw_disk[2].mounted == 0 ) {
-		if( disk_pw_mount(2) ) {
-			dvr_log("Disk3 mounted, start auto-backup!" );
+	if (dio_curmode() == APPMODE_STANDBY && pw_disk[2].mounted == 0)
+	{
+		if (disk_pw_mount(2))
+		{
+			dvr_log("Disk3 mounted, start auto-backup!");
 		}
 	}
 }
@@ -997,20 +1020,22 @@ void disk_pw_checkmode()
 */
 
 // return 1 success
-int  disk_pw_deleteoldfile( char * disk, int lockfile ) 
+int disk_pw_deleteoldfile(char *disk, int lockfile)
 {
-    struct t_oldfile oldfile ;
-    oldfile.oldestdate = 30000000 ;
-    oldfile.oldesttime = 0;
-    oldfile.lock = lockfile ;
+	struct t_oldfile oldfile;
+	oldfile.oldestdate = 30000000;
+	oldfile.oldesttime = 0;
+	oldfile.lock = lockfile;
 
-	if( disk_olddestfile( disk, &oldfile, 0 ) ) {
-		if( oldfile.filename.length()>10 ) {
-			disk_removefile( (char *) oldfile.filename ) ;
-			return 1 ;
+	if (disk_olddestfile(disk, &oldfile, 0))
+	{
+		if (oldfile.filename.length() > 10)
+		{
+			disk_removefile((char *)oldfile.filename);
+			return 1;
 		}
 	}
-	return 0 ;
+	return 0;
 }
 
 void disk_pw_checkspace()

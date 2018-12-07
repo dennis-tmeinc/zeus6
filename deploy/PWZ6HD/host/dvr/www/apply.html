@@ -9,26 +9,19 @@
 </head>
 <body>
 <!--#include file="header.i"-->
-<p>&nbsp;</p>
+<p></p>
+<div style="margin: 5px 80px">
 <form id="dvrsetup" enctype="application/x-www-form-urlencoded" method="post" action="system.html">
 <input name="page" value="apply" type="hidden" />
-<table>
-<tbody>
-<tr>
-<td>DVR setting changed.<br />
-Close this window or continue setup.
+
+<p> DVR setting changed. </p>
+<p style="display:none">
 <!--#exec cmd="cgi/applysetup 2> /dev/null " -->
 <!--#exec cmd="cgi/getsetup 2> /dev/null " -->
-</td>
-<td></td>
-</tr>
-<tr>
-<td><input value="Close" onclick="self.close()" type="button" />&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<input value="Continue" type="submit" /></td><td></td>
-</tr>
-</tbody>
-</table>
+</p>
+<p></p>
+<input value="Continue" type="submit" />
 </form>
-<script type="text/javascript">
-</script>
+</div>
 </body>
 </html>

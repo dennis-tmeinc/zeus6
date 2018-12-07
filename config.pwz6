@@ -1,5 +1,5 @@
 
-PROJDIR=/home/dennis/proj/dvr/zeus6
+PROJDIR=$(HOME)/proj/dvr/zeus6
 proj=PWZ6
 EAGLE=eagle32
 

@@ -13,7 +13,7 @@ EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 CFLAGS+= -I../dvrsvr
-LDFLAGS= -lstdc++
+LDFLAGS= -lstdc++ -lm
 
 
 dvrtime : $(OBJS) $(EXTSOURCES) $(EXTHEADERS)
@@ -29,4 +29,4 @@ dtime : $(SOURCES) $(EXTSOURCES) $(EXTHEADERS)
 
 clean :
 	rm -f *.o
-	rm -f dvrtime
+	rm -f dvrtime dtime

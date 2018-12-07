@@ -47,7 +47,6 @@ static char * readfile( char * filename )
 
 int main()
 {
-    char * zoneinfobuf ;
     string s ;
     char * p ;
     int l;
@@ -305,10 +304,8 @@ int main()
 
         // Number of body camera
 #ifdef APP_PWZ8
-        value = dvrconfig.getvalue("system", "totalbodycam");
-        if( value.length()>0 ) {
-            fprintf(fvalue, "\"totalbodycam\":\"%s\",", (char *)value );
-        }
+        ivalue = dvrconfig.getvalueint("system", "totalbodycam");
+        fprintf(fvalue, "\"totalbodycam\":\"%d\",", ivalue);
 #endif
 
         // pre_lock_time
@@ -916,25 +913,25 @@ int main()
 
             ivalue = dvrconfig.getvalueint( section, "enable");
             if( ivalue ) {
-                fprintf( fvalue, "\"bcam_enable\": \"on\"," );
+                fprintf( fvalue, "\"bcam_enable\":\"on\"," );
             }
 
             // bodycam ip address
             value = dvrconfig.getvalue(section, "ip") ;
             if( value.length()>0 ) {
-                fprintf( fvalue, "\"bcam_ip\": \"%s\",", (char *)value );
+                fprintf( fvalue, "\"bcam_ip\":\"%s\",", (char *)value );
             }
 
             // to trigger dvr by bodycam
             ivalue = dvrconfig.getvalueint( section, "bodycam_trigger");
             if( ivalue ) {
-                fprintf( fvalue, "\"bcam_trigger\": \"on\"," );
+                fprintf( fvalue, "\"bcam_trigger\":\"on\"," );
             }
 
             // trigger by dvr
             ivalue = dvrconfig.getvalueint( section, "dvr_trigger");
             if( ivalue ) {
-                fprintf( fvalue, "\"bcam_dvrtrigger\": \"on\"," );
+                fprintf( fvalue, "\"bcam_dvrtrigger\":\"on\"," );
             }
             fprintf(fvalue, "\"objname\":\"bodycam_value\" }" );
             fclose( fvalue );
@@ -958,7 +955,7 @@ int main()
             value = dvrconfig.getvalue(section, "name") ;
             // write sensor value
             if( value.length()>0 ) {
-                fprintf( fvalue, "\"%s_name\": \"%s\",", section, (char *)value );
+                fprintf( fvalue, "\"%s_name\":\"%s\",", section, (char *)value );
             }
 
             // inverted value
@@ -1217,29 +1214,32 @@ int main()
     }
 #endif
 
-
     // write tz_option
-    fvalue = fopen( "tz_option", "w");
-    if( fvalue ) {
+    fvalue = fopen("tz_option", "w");
+    if (fvalue)
+    {
         // initialize enumkey
-        int line=dvrconfig.findsection("timezones");
-        while( (p=dvrconfig.enumkey( line ))!=NULL ) {
-            tzi=dvrconfig.getvalue("timezones", p );
-            fprintf(fvalue, "<option value=\"%s\">%s ", p, p );
-            if( tzi.length()>0 ) {
-                zoneinfobuf=tzi;
-                while( *zoneinfobuf != ' ' &&
-                      *zoneinfobuf != '\t' &&
-                      *zoneinfobuf != 0 ) {
-                          zoneinfobuf++ ;
-                      }
-                if( strlen(zoneinfobuf) > 1 ) {
-                    fprintf(fvalue, "-%s", zoneinfobuf );
+        int line = dvrconfig.findsection("timezones");
+        while ((p = dvrconfig.enumkey(line)) != NULL)
+        {
+            fprintf(fvalue, "<option value=\"%s\">%s ", p, p);
+            s = p;
+            tzi = dvrconfig.getvalue("timezones", (char *)s);
+            if (tzi.length() > 0)
+            {
+                p = tzi;
+                while (*p > ' ' )
+                {
+                    p++;
+                }
+                if (strlen(p) > 1)
+                {
+                    fprintf(fvalue, "-%s", p);
                 }
             }
             fprintf(fvalue, "</option>\n");
         }
-        fclose( fvalue );
+        fclose(fvalue);
     }
 
     // write led_number

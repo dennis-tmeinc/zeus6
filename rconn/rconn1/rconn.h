@@ -3,11 +3,11 @@
 
 #define TUNNEL_BUFSIZE (4096)
 
-extern int g_port ;
-extern int g_keepalive ;
+extern int g_port;
+extern int g_keepalive;
 
 int runtime();
-void rconn_loop( int ssock, int tsock );
+void rconn_loop(int ssock, int tsock);
 
 #define LINEBUFSIZE (1024)
 

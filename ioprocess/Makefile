@@ -48,6 +48,6 @@ dvrlog : dvrlog.o $(HEADERS) $(EXTHEADERS)
 
 clean :
 	rm -f *.o
-	rm -f ioprocess panelled devicepower buzzer dvrlog
+	rm -f ioprocess panelled devicepower buzzer dvrlog dumpio
 
 

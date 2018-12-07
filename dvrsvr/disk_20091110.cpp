@@ -24,13 +24,13 @@ int g_nodiskcheck ;
 time_t time1stHDDetected;
 
 static pthread_mutex_t disk_mutex;
-static int disk_minfreespace;           // minimum free space for current disk, in Magabytes
+static int disk_minfreespace; // minimum free space for current disk, in Magabytes
 
 extern void writeDebug(char *fmt, ...);
-int copy_files(char *from_root, 
-	       char  *dest_root,
-	       char *dest_dir,
-	       char *servername);
+int copy_files(char *from_root,
+			   char *dest_root,
+			   char *dest_dir,
+			   char *servername);
 void sync_dvrlog_for_hybrid(char *disk_a, char *disk_b);
 void sync_smartlog_for_hybrid(char *disk_a, char *disk_b);
 int copy_file_to_path(char *from_fullname, char *to_path, int forcewrite);
@@ -39,52 +39,57 @@ int copy_file_to_path(char *from_fullname, char *to_path, int forcewrite);
 int sata_diskid = -1;
 int flash_diskid = -1;
 
-struct disk_day_info {
-    int bcdday ;                    // available day in BCD. ex 20090302
-    int nfiletime ;                 // earliest _N_ file time in BCD. 133222
-    int nfilelen ;                  // total length of _N_ files
-    int lfiletime ;                 // earliest lfile time in BCD. 133222
-    int lfilelen ;                  // total length of _L_ files
-    int nfiletime_l ;               // latest _N_ file time in BCD. 133222
-    int lfiletime_l ;               // latest lfile time in BCD. 133222
-} ;
-
-struct day_time {
-  int day;
-  int time;
+struct disk_day_info
+{
+	int bcdday;		 // available day in BCD. ex 20090302
+	int nfiletime;   // earliest _N_ file time in BCD. 133222
+	int nfilelen;	// total length of _N_ files
+	int lfiletime;   // earliest lfile time in BCD. 133222
+	int lfilelen;	// total length of _L_ files
+	int nfiletime_l; // latest _N_ file time in BCD. 133222
+	int lfiletime_l; // latest lfile time in BCD. 133222
 };
 
-class disk_info {
-    public:    
-        dev_t  dev ;                        // disk device id
-        int    mark ;
-        int type;
-        int id, ndisk;
-        string basedir ;
+struct day_time
+{
+	int day;
+	int time;
+};
 
-        array  <disk_day_info>  daylist ;
-        
-        disk_info() {
-            dev=0;
-            basedir="" ;
-            mark=0;
-	    type = 0;
-	    id = 0;
-	    ndisk = 0;
-            daylist.empty();
-        }
-        
-        disk_info & operator = ( disk_info & di ) {
-            dev     = di.dev ;
-            mark    = di.mark ;
-            basedir = di.basedir ;
-            daylist = di.daylist ;
-	    type = di.type;
-	    id = di.id;
-	    ndisk = di.ndisk;
-            return *this ;
-        }
-} ;
+class disk_info
+{
+  public:
+	dev_t dev; // disk device id
+	int mark;
+	int type;
+	int id, ndisk;
+	string basedir;
+
+	array<disk_day_info> daylist;
+
+	disk_info()
+	{
+		dev = 0;
+		basedir = "";
+		mark = 0;
+		type = 0;
+		id = 0;
+		ndisk = 0;
+		daylist.empty();
+	}
+
+	disk_info &operator=(disk_info &di)
+	{
+		dev = di.dev;
+		mark = di.mark;
+		basedir = di.basedir;
+		daylist = di.daylist;
+		type = di.type;
+		id = di.id;
+		ndisk = di.ndisk;
+		return *this;
+	}
+};
 
 static array <disk_info> disk_disklist ;   // recording disk list
 static string disk_base;                // recording disk base dir

@@ -54,7 +54,7 @@ int dvr_log(const char *fmt, ...);
 
 static char bcd(int v)
 {
-    return (char)(((v/10)%10)*0x10 + v%10) ;
+	return (char)(((v / 10) % 10) * 0x10 + v % 10);
 }
 
 int mcu_bootupready(int* D1)
