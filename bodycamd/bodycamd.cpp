@@ -17,7 +17,7 @@
 #include <signal.h>
 #include <sys/un.h>
 
-#include "../net/net.h"
+#include "net/net.h"
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"

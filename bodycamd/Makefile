@@ -4,16 +4,25 @@
 
 include ../config
 
-CFLAGS += -I$(PROJDIR) 
-LDFLAGS+= -lcrypt -lstdc++ -lpthread
+LDFLAGS+= -lstdc++ -lpthread -lcrypt 
+EXTRASOURCES = \
+	$(PROJDIR)/lib/cjson/cjson.cpp \
+	$(PROJDIR)/lib/net/net.cpp \
+	$(PROJDIR)/dvrsvr/config.cpp
+EXTRAHEADERS = \
+	$(PROJDIR)/lib/cjson/cjson.h \
+	$(PROJDIR)/lib/net/net.h \
+	$(PROJDIR)/dvrsvr/cfg.h \
+	$(PROJDIR)/dvrsvr/genclass.h \
+	$(PROJDIR)/ioprocess/diomap.h 
 
-SOURCES=bodycamd.cpp bodycam.cpp cjson.cpp ../net/net.cpp ../dvrsvr/config.cpp
-HEADERS=bodycam.h cjson.h ../net/net.h ../ioprocess/diomap.h ../dvrsvr/genclass.h ../dvrsvr/cfg.h
+SOURCES=bodycamd.cpp bodycam.cpp
+HEADERS=bodycam.h
 
 all: bodycamd
 
-bodycamd: $(SOURCES) $(HEADERS)
-	$(CC) $(CFLAGS) -O2 -o $@  $(SOURCES) $(LDFLAGS)
+bodycamd: $(SOURCES) $(EXTRASOURCES)  $(HEADERS) $(EXTRAHEADERS)
+	$(CC) $(CFLAGS) -O2 -o $@  $(SOURCES) $(EXTRASOURCES) $(LDFLAGS)
 
 clean :
 	rm   -f bodycamd

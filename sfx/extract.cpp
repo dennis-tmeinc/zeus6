@@ -7,7 +7,7 @@
 #include <sys/stat.h>
 #include <libgen.h>
 
-#include "../lzmasdk/lzma.h"
+#include "lzmasdk/lzma.h"
 
 #ifndef uint
 #define uint unsigned int

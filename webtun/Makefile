@@ -4,12 +4,13 @@
 
 include ../config
 
-SOURCES=webtun.cpp
+CFLAGS += -I$(PROJDIR)/lib
+
+EXTHEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h 
+EXTSOURCES=$(PROJDIR)/dvrsvr/config.cpp 
 
 HEADERS=
-
-EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h 
-EXTSOURCES=../dvrsvr/config.cpp 
+SOURCES=webtun.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 CFLAGS+= -I../rconn 

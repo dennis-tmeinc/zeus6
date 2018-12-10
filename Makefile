@@ -66,5 +66,5 @@ firmware:
 clean:
 	for dir in $(SUBDIRS); do $(MAKE) -C $$dir clean ; done
 	$(MAKE) -C $(PROJDIR)/deploy/$(proj) clean
-	find -name \*~ -delete
+#	find -name \*~ -delete
 

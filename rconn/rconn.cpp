@@ -18,7 +18,7 @@
 #include <sys/un.h>
 #include <pthread.h>
 
-#include "../net/net.h"
+#include "net/net.h"
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"

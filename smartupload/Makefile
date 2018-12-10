@@ -1,9 +1,10 @@
 
 include ../config
 
-all: smartftp
+target: smartftp
 
-EXTRA_CFLAGS = -I./curl-7.20.1/include
+#EXTRA_CFLAGS = -I./curl-7.20.1/include
+EXTRA_CFLAGS = -I$(PROJDIR)/lib/curl
 
 LDFLAGS += -lcurl -lrt -lpthread
 
@@ -27,5 +28,6 @@ hikfile.o: hikfile.c hikfile.h
 
 strip:
 	$(STRIP) smartftp
+	
 clean:
 	rm -f *.o smartftp

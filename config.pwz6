@@ -18,8 +18,8 @@ export CFLAGS += --sysroot=$(SYSROOT)
 export LDFLAGS +=  --sysroot=$(SYSROOT)
 
 # dvr specific options
+CFLAGS += -Wno-write-strings -I$(PROJDIR) -I$(PROJDIR)/lib
 LDFLAGS += -L$(PROJDIR)/deploy/$(proj)/host/dvr/lib
-CFLAGS += -Wno-write-strings 
 
 # debugging folder
 debug_folder=/home/dennis/nfsroot/eagletest

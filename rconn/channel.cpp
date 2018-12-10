@@ -24,7 +24,7 @@
 #include <string.h>
 #include <signal.h>
 
-#include "../net/net.h"
+#include "net/net.h"
 #include "channel.h"
 
 channel::channel() 

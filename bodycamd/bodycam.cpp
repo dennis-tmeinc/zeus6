@@ -16,14 +16,14 @@
 #include <stdarg.h>
 #include <signal.h>
 
-#include "../net/net.h"
+#include "net/net.h"
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"
 #include "../dvrsvr/cfg.h"
 #include "../ioprocess/diomap.h"
 
-#include "cjson.h"
+#include "cjson/cjson.h"
 #include "bodycam.h"
 
 // num: number of the camera, start from 0
@@ -128,8 +128,6 @@ void bodycam::onKeyInput(char *keyInput)
 // return 1: if received buffer can be parsed as json object
 int bodycam::onrecv()
 {
-    // extract from cJSON.cpp
-    cJSON *cJSON_ParseWithOpts(const char *value, const char **return_parse_end, int require_null_terminated);
     const char *ep;
     while (recvPos > 2)
     { // may be parseable

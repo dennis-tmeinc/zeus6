@@ -13,7 +13,7 @@
 #include <sys/ioctl.h>
 #include <linux/usbdevice_fs.h>
 
-#include "../net/net.h"
+#include "net/net.h"
 
 #include "rconn.h"
 #include "adbclient.h"
