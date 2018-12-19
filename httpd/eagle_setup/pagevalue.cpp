@@ -10,7 +10,9 @@
 #include <fcntl.h>
 #include <time.h>
 
-#include "../../cfg.h"
+#include <cfg.h>
+
+#include "json/json.h"
 
 int decode(const char * in, char * out, int osize );
 char * getquery( const char * qname );
@@ -31,14 +33,10 @@ int savequery( char * valuefile )
     char * query ;
     int x ;
     int item=0;
-    FILE * sf ;
-    sf = fopen( valuefile, "w" ) ;
-    if( sf==NULL )
-        return 0;
 
-    // JSON head
-    fprintf( sf, "{" );
-
+    // JSON obj
+    json * jq = new json(JSON_Object) ;
+    
     query = getenv("QUERY_STRING");
     while( query && *query ) {
         x = decode( query, qvalue, sizeof(qvalue) ) ;
@@ -48,7 +46,7 @@ int savequery( char * valuefile )
                 *qp=0 ;
                 qp++;
                 if( strcmp(qvalue, "page")!=0 ) {
-                    fprintf( sf, "\"%s\":\"%s\",", qvalue,  qp );
+                    jq->addStringItem(qvalue,  qp );
                     item++;
                 }
             }
@@ -68,7 +66,7 @@ int savequery( char * valuefile )
                 *qp=0 ;
                 qp++;
                 if( strcmp(qvalue, "page")!=0 ) {
-                    fprintf( sf, "\"%s\":\"%s\",", qvalue,  qp );
+                    jq->addStringItem(qvalue,  qp );
                     item++;
                 }
             }
@@ -79,8 +77,9 @@ int savequery( char * valuefile )
             query+=x+1;
         }
     }
-    fprintf( sf, "\"eobj\":\"\"}" );
-    fclose( sf );
+    jq->addStringItem("eobj","");
+    jq->saveFile(valuefile);
+    delete jq ;
     return item ;
 }
 

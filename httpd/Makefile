@@ -4,8 +4,7 @@
 
 include ../config
 
-CFLAGS += -I$(PROJDIR) 
-LDFLAGS+= -lcrypt -lstdc++
+LDFLAGS+= -lstdc++ -lcrypt 
 
 all: eaglehttpd eagle_setup- getsetup- cfgdown- livecam-
 

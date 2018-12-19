@@ -136,7 +136,10 @@ Camera :</label> </td>
 
 <tr>
 <td class="col1">Enable Pre-Event/Just-In-Case Audio:</td>
-<td><input name="enablejicaudio" value="on" type="checkbox" /></td>
+<td>
+    <input name="enablejicaudio" value="on" type="checkbox" />
+    <input name="bool_enablejicaudio" value="on" type="hidden" />
+</td>
 </tr>
 
 <!--
@@ -488,6 +491,7 @@ for( i=1; i<=num_sensor; i++ ) {
 <td class="col1">G-Force sensor trigger:</td>
 <td>
 <input name="gforce_trigger" value="on" type="checkbox"/>
+<input name="bool_gforce_trigger" value="on" type="hidden"/>
 </td>
 </tr>
 
@@ -502,6 +506,7 @@ for( i=1; i<=num_sensor; i++ ) {
 <td class="col1">Vehicle speed trigger:</td>
 <td>
 <input name="speed_trigger" value="on" type="checkbox"/>
+<input name="bool_speed_trigger" value="on" type="hidden"/>
 </td>
 </tr>
 

@@ -59,12 +59,18 @@
 
 <tr>
 <td class="col1"><label for="id_en_file_encryption">Enable File Encryption:</label></td>
-<td><input name="en_file_encryption" id="id_en_file_encryption" value="on" type="checkbox" /></td>
+<td>
+    <input name="en_file_encryption" id="id_en_file_encryption" value="on" type="checkbox" />
+    <input name="bool_en_file_encryption" value="on" type="hidden" />
+</td>
 </tr>
 
 <tr id="id_tr_usemfkey" >
 <td class="col1"><label for="id_en_file_encryption">Use Manufacturer Default Password:</label></td>
-<td><input name="en_use_default_password" id="id_en_use_default_password" value="on" type="checkbox" /></td>
+<td>
+    <input name="en_use_default_password" id="id_en_use_default_password" value="on" type="checkbox" />
+    <input name="bool_en_use_default_password" value="on" type="hidden" />
+</td>
 </tr>
 
 <tr id="id_tr_filepassword" >
@@ -100,6 +106,7 @@
 <td class="col1"><label for="id_pw_recordmethod">Just-In-Case Recording:</label></td>
 <td>
 <input name="pw_recordmethod" id="id_pw_recordmethod" value="on" type="checkbox" />
+<input name="bool_pw_recordmethod" value="on" type="hidden" />
 </td>
 </tr>
 
@@ -268,6 +275,7 @@
 <td class="col1"><label for="id_camsd">Use SD Camera:</label></td>
 <td>
 <input name="camsd" id="id_camsd" value="on" type="checkbox" />
+<input name="bool_camsd" value="on" type="hidden" />
 </td>
 </tr>
 

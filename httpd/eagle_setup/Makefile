@@ -34,8 +34,8 @@ login : login.cpp getquery.cpp
 loginx : loginx.cpp getquery.cpp
 	$(CC) $(CFLAGS) -o $@ loginx.cpp getquery.cpp $(LDFLAGS) -lcrypt
 
-pagevalue : pagevalue.cpp getquery.cpp
-	$(CC) $(CFLAGS) -o $@ pagevalue.cpp  getquery.cpp $(LDFLAGS)
+pagevalue : pagevalue.cpp getquery.cpp ../../lib/json/json.cpp
+	$(CC) $(CFLAGS) -o $@ pagevalue.cpp  getquery.cpp ../../lib/json/json.cpp $(LDFLAGS)
 
 cfgupload : cfgupload.cpp
 	$(CC) $(CFLAGS) -o $@ cfgupload.cpp $(LDFLAGS)

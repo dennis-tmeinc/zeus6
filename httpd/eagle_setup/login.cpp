@@ -167,7 +167,7 @@ int main()
     if( checkloginpassword() ) {
         char serno[40] ;
         // setup configure data
-        system("cgi/getsetup");
+        system("getsetup");
         // make serial number
         makeserialno( serno, sizeof(serno));
         // set cookie

@@ -7,10 +7,12 @@
 #include <termios.h>
 #include <unistd.h>
 
-#include "../../cfg.h"
-#include "../../dvrsvr/crypt.h"
-#include "../../dvrsvr/genclass.h"
-#include "../../dvrsvr/cfg.h"
+#include "cfg.h"
+#include "dvrsvr/crypt.h"
+#include "dvrsvr/genclass.h"
+#include "dvrsvr/cfg.h"
+
+#include "json/json.h"
 
 char tzfile[] = "tz_option" ;
 
@@ -18,15 +20,17 @@ pid_t  dvrpid=0 ;
 
 void dvrsvr_down()
 {
-    dvrpid = 0 ;
-    FILE * fdvrpid = fopen( VAR_DIR "/dvrsvr.pid", "r");
-    if( fdvrpid ) {
-        fscanf(fdvrpid, "%d", &dvrpid );
-        fclose( fdvrpid );
-    }
-    if( dvrpid > 0 ) {
-        kill( dvrpid, SIGUSR1 );
-    }
+	dvrpid = 0;
+	FILE *fdvrpid = fopen(VAR_DIR "/dvrsvr.pid", "r");
+	if (fdvrpid)
+	{
+		fscanf(fdvrpid, "%d", &dvrpid);
+		fclose(fdvrpid);
+	}
+	if (dvrpid > 0)
+	{
+		kill(dvrpid, SIGUSR1);
+	}
 }
 
 void dvrsvr_up()
@@ -114,7 +118,7 @@ int randomchar()
     }
 }
 
-void setadminpassword( char * password )
+void setadminpassword( const char * password )
 {
     char salt[20] ;
     char * key ;
@@ -171,7 +175,7 @@ char * getbroadcastaddr(char* ipaddr,char* ipmask)
     return inet_ntoa(broadcast);
 }
 
-
+/*
 static char * rtrim( char * s )
 {
     while( *s > 1 && *s <= ' ' ) {
@@ -218,16 +222,99 @@ static void savefile( char * filename, char * v )
         fclose( f );
     }
 }
+*/
+
+// set json item to configure file
+void set_json_item(
+    config &cfg,
+    json &jobj,
+    const char *section,
+    const char *key,
+    const char *json_name,
+    int valuetype) // 0: string, 1: integer, 2: float, 3, "on" if trun, 4: on if false
+{
+    string v;
+    json *bool_item;
+    json *item = jobj.getItem(json_name); // get item with name (for objects)
+    if (valuetype == 0)                   // string
+    {
+        if (item == NULL)
+            return;
+        else if (item->isString())
+        {
+            cfg.setvalue(section, key, item->getString());
+        }
+        else if (item->isNumber())
+        {
+            cfg.setvalue(section, key, v.printf("%lg", item->getNumber()));
+        }
+    }
+    else if (valuetype == 1) // integer number
+    {
+        if (item == NULL)
+            return;
+        else if (item->isNumber())
+        {
+            cfg.setvalueint(section, key, item->getNumber());
+        }
+        else if (item->isString())
+        {
+            cfg.setvalue(section, key, item->getString());
+        }
+    }
+    else if (valuetype == 2) // generic (double) number
+    {
+        if (item == NULL)
+            return;
+        else if (item->isNumber())
+        {
+            cfg.setvalue(section, key, v.printf("%lg", item->getNumber()));
+        }
+        else if (item->isString())
+        {
+            cfg.setvalue(section, key, item->getString());
+        }
+    }
+    else if (valuetype == 3) // "on"
+    {
+        bool_item = jobj.getItem(v.printf("bool_%s", json_name));
+        if (bool_item)
+        {
+            cfg.setvalueint(section, key, item == NULL ? 0 : 1);
+        }
+    }
+    else if (valuetype == 4) // reversed "on"
+    {
+        bool_item = jobj.getItem(v.printf("bool_%s", json_name));
+        if (bool_item)
+        {
+            cfg.setvalueint(section, key, item == NULL ? 1 : 0);
+        }
+    }
+}
+
+struct cfg_table
+{
+    const char *section;
+    const char *key;
+    const char *jfield;
+    int valuetype; //0: string, 1: integer, 2: float, 3, "on" if trun, 4: on if false
+};
+
+extern cfg_table system_table[] ;
+extern cfg_table camera_table[] ;
 
 int main()
 {
     int i, r;
     int ivalue ;
     char * v ;
+    struct cfg_table * ctable ;
     FILE * fvalue ;
     char section[80] ;
     int  sensor_number = 31;
     config dvrconfig(CFG_FILE);
+    string value ;
 
     // suspend dvrsvr
     dvrsvr_down();
@@ -235,63 +322,30 @@ int main()
     // set system_value
     fvalue = fopen( "system_value", "r");
     if( fvalue ) {
-        r=fread( buf, 1, sizeof(buf), fvalue );
-        buf[r]=0;
         fclose(fvalue);
 
-#ifdef  TVS_APP
-        v=getsetvalue("tvs_medallion");
-        if( v ) {
-            dvrconfig.setvalue( "system", "tvs_medallion", v );
-            // duplicate medallion to hostname
-            dvrconfig.setvalue( "system", "hostname", v );
+        json * j_system = new json(JSON_Object);
+        j_system->loadFile("system_value");
+
+        ctable = system_table ;
+        while( ctable->jfield ) {
+            set_json_item( dvrconfig, *j_system, ctable->section, ctable->key, ctable->jfield, ctable->valuetype);
+            ctable++ ;
         }
 
-        v=getsetvalue("tvs_licenseplate");
-        if( v ) {
-            dvrconfig.setvalue( "system", "tvs_licenseplate", v );
-        }
-
-        v=getsetvalue("tvs_ivcs_serial");
-        if( v ) {
-            dvrconfig.setvalue( "system", "tvs_ivcs_serial", v );
-        }
-#endif  // TVS_APP
+#ifdef TVS_APP
+        // make medallion as host name also
+        set_json_item( dvrconfig, *j_system, "system", "hostname", "tvs_medallion", 0);
+#endif
 
 #ifdef  PWII_APP
-
-        // PW recording method (just in case option)
-        v=getsetvalue("pw_recordmethod");
-        if( v ) {
-            dvrconfig.setvalueint( "system", "pw_recordmethod", 1 );
-        }
-        else {
-            dvrconfig.setvalueint( "system", "pw_recordmethod", 0 );
-        }
-
-        v=getsetvalue("vehicleid");
-        if( v ) {
-            dvrconfig.setvalue( "system", "id1", v );
-            // duplicate medallion to hostname
-            dvrconfig.setvalue( "system", "hostname", v );
-        }
-
-        v=getsetvalue("district");
-        if( v ) {
-            dvrconfig.setvalue( "system", "id2", v );
-        }
-
-        v=getsetvalue("unit");
-        if( v ) {
-            dvrconfig.setvalue( "system", "serial", v );
-        }
+        set_json_item( dvrconfig, *j_system, "system", "hostname", "vehicleid", 0);
 
         // adminpassword
-        v=getsetvalue("adminpassword");
-        if( v!=NULL && strcmp(v, "*****" )!=0 ) {
-            setadminpassword(v);
+        json * it = j_system->getItem("adminpassword");
+        if( it && it->isString() && strcmp(it->getString(), "*****" )!=0  ) {
+            setadminpassword(it->getString());    
         }
-
 
         // file encryptions
         /*
@@ -318,173 +372,13 @@ int main()
             }
         }
         */
-
-        // all other values
-
-        v = getsetvalue ("shutdown_delay");
-        if( v ) {
-            sscanf( v, "%d", &i);
-            if( i<0 ) i=0 ;
-            if( i>36000 ) i=36000 ;
-            dvrconfig.setvalueint( "system", "shutdowndelay", i );
-        }
-
-        v = getsetvalue ("standbytime");
-        if( v ) {
-            sscanf( v, "%d", &i);
-            if( i<0 ) i=0 ;
-            if( i>36000 ) i=36000 ;
-            dvrconfig.setvalueint( "system", "standbytime", i );
-        }
-
-        v = getsetvalue ("uploadingtime");
-        if( v ) {
-            sscanf( v, "%d", &i);
-            if( i<0 ) i=0 ;
-            if( i>36000 ) i=36000 ;
-            dvrconfig.setvalueint( "system", "uploadingtime", i );
-        }
-
-        v = getsetvalue ("archivingtime");
-        if( v ) {
-            sscanf( v, "%d", &i);
-            if( i<0 ) i=0 ;
-            if( i>36000 ) i=36000 ;
-            dvrconfig.setvalueint( "system", "archivetime", i );
-        }
-
-        // trace mark event time (in seconds)
-        v = getsetvalue ("tracemarktime");
-        if( v ) {
-            i=0 ;
-            sscanf( v, "%d", &i);
-            if( i<1 ) i=1 ;
-            if( i>7200 ) i=7200 ;
-            dvrconfig.setvalueint( "system", "tracemarktime", i );
-        }
-
-        // file buffer size
-        v = getsetvalue ("filebuffersize");
-        if( v ) {
-            i=strlen(v);
-            v[i]='k' ;
-            v[i+1]=0 ;
-            dvrconfig.setvalue( "system", "filebuffersize", v );
-        }
-
-        v = getsetvalue ("file_size");
-        if( v ) {
-            i=strlen(v);
-            v[i]='M' ;
-            v[i+1]=0 ;
-            dvrconfig.setvalue( "system", "maxfilesize", v );
-        }
-
-        v = getsetvalue ("file_time");
-        if( v ) {
-            sscanf( v, "%d", &i);
-            if( i<0 ) i=0 ;
-            if( i>18000 ) i=18000 ;
-            dvrconfig.setvalueint( "system", "maxfilelength", i );
-        }
-
-        // totalcamera
-        v = getsetvalue ("totalcamera");
-        if( v ) {
-            dvrconfig.setvalue( "system", "totalcamera", v );
-        }
-
-
-#ifdef APP_PWZ8
-        // totalcamera
-        v = getsetvalue ("totalbodycam");
-        if( v ) {
-            dvrconfig.setvalue( "system", "totalbodycam", v );
-        }
-        else {
-            dvrconfig.setvalue( "system", "totalbodycam", "0" );
-        }
-#endif
-
-        // pre lock time
-        v = getsetvalue ("pre_lock_time");
-        if( v ) {
-            dvrconfig.setvalue( "system", "prelock", v );
-        }
-
-        // post lock time
-        v = getsetvalue ("post_lock_time");
-        if( v ) {
-            dvrconfig.setvalue( "system", "postlock", v );
-        }
-
-        if( getsetvalue( "bool_norecplayback" )!=NULL ) {
-            v = getsetvalue( "norecplayback" );
-            if( v ) {
-                dvrconfig.setvalueint( "system", "norecplayback", 1 );
-            }
-            else {
-                dvrconfig.setvalueint( "system", "norecplayback", 0 );
-            }
-        }
-
-        if( getsetvalue( "bool_noreclive" )!=NULL ) {
-            v = getsetvalue( "noreclive" );
-            if( v ) {
-                dvrconfig.setvalueint( "system", "noreclive", 1 );
-            }
-            else {
-                dvrconfig.setvalueint( "system", "noreclive", 0 );
-            }
-        }
-
-#ifdef APP_PWZ8
-        // sd camera
-        v = getsetvalue ("camsd");
-        dvrconfig.setvalueint( "system", "camsd", v?1:0 );
-#endif
-
-        // gpslog enable
-        v = getsetvalue ("en_gpslog");
-        if( v ) {
-            dvrconfig.setvalueint( "glog", "gpsdisable", 0 );
-        }
-        else {
-            dvrconfig.setvalueint( "glog", "gpsdisable", 1 );
-        }
-
-        // gps port
-        v = getsetvalue( "gpsport" );
-        if( v ) {
-            dvrconfig.setvalue( "glog", "serialport", v );
-        }
-
-        // gps baud rate
-        v = getsetvalue( "gpsbaudrate" );
-        if( v ) {
-            dvrconfig.setvalue( "glog", "serialbaudrate", v );
-        }
-
-        // Video output selection
-        v = getsetvalue( "videoout" );
-        if( v ) {
-            dvrconfig.setvalue(  "VideoOut", "startchannel", v );
-        }
-
 #endif  // PWII_APP
-
-        // Time Zone
-        v = getsetvalue ("dvr_time_zone");
-        if( v ) {
-            dvrconfig.setvalue( "system", "timezone", v );
-        }
-
-        v = getsetvalue ("custom_tz");
-        if( v ) {
-            dvrconfig.setvalue( "timezones", "Custom", v );
-        }
-
+        
+        delete j_system ;
     }
+
+
+    // moved sensor setting ahead of camera setting , because camera setting use "sensor_number"
 
     // write sensor_value
     fvalue = fopen( "sensor_value", "r");
@@ -532,327 +426,85 @@ int main()
         }
 
 #if defined(TVS_APP) || defined(PWII_APP)
-       v=getsetvalue("sensor_powercontrol");
-       if(v){
-           dvrconfig.setvalueint("io","sensor_powercontrol",1);
-       }
-       else {
-           dvrconfig.setvalueint("io","sensor_powercontrol",0);
-       }
+        v = getsetvalue("sensor_powercontrol");
+        if (v)
+        {
+            dvrconfig.setvalueint("io", "sensor_powercontrol", 1);
+        }
+        else
+        {
+            dvrconfig.setvalueint("io", "sensor_powercontrol", 0);
+        }
 #endif
 
     }
 
-    // set camera_value
+    // this is new camera nubmer settings
     int camera_number = dvrconfig.getvalueint("system", "totalcamera");
-    if( camera_number<=0 ) {
-        camera_number=2 ;
-    }
 
     for( i=1; i<=camera_number; i++ ) {
-        char camfilename[20] ;
-        sprintf(camfilename, "camera_value_%d", i);
-        fvalue=fopen(camfilename, "r");
-        if(fvalue){
-            r=fread( buf, 1, sizeof(buf), fvalue );
-            buf[r]=0;
-            fclose(fvalue);
-            sprintf(section, "camera%d", i);
+        string s ;
+        sprintf(section, "camera%d", i);
 
-            // enable_camera
-            if(getsetvalue( "bool_enable_camera" )!=NULL ) {
-                v=getsetvalue( "enable_camera" );
-                if( v ) {
-                    dvrconfig.setvalueint(section,"enable",1);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"enable",0);
-                }
+        json * j_camera = new json(JSON_Object);
+        j_camera->loadFile(s.printf("camera_value_%d", i));
+
+        ctable = camera_table ;
+        while( ctable->jfield ) {
+            set_json_item( dvrconfig, *j_camera, ctable->section==NULL?section:ctable->section, ctable->key, ctable->jfield, ctable->valuetype);
+            ctable++ ;
+        }
+
+        // bit_rate_mode
+        json * item = j_camera->getItem( "bit_rate_mode" );
+        if( item && item->isString() ) {
+            char v = *item->getString();
+            if( v == '0' ) {
+                dvrconfig.setvalueint(section,"bitrateen", 0);
             }
-
-            // camera_name
-            v=getsetvalue( "camera_name" );
-            if( v ) {
-                dvrconfig.setvalue(section,"name",v);
-            }
-
-
-            // m_enablejicaudio, record audio in JIC mode
-            v=getsetvalue( "enablejicaudio" );
-            if( v ) {
-                dvrconfig.setvalueint(section,"enablejicaudio", 1);
+            else if( v == '1' ) {
+                dvrconfig.setvalueint(section,"bitrateen", 1);
+                dvrconfig.setvalueint(section,"bitratemode", 0);
             }
             else {
-                dvrconfig.setvalueint(section,"enablejicaudio", 0);
+                dvrconfig.setvalueint(section,"bitrateen", 1);
+                dvrconfig.setvalueint(section,"bitratemode", 1);
             }
+        }
 
-            // camera_type
-            v=getsetvalue( "camera_type" );
-            if( v ) {
-                dvrconfig.setvalue(section,"type",v);
-            }
+        // trigger and osd
+        for( ivalue=1; ivalue<=sensor_number; ivalue++ ) {
+            int  tr = 0;
 
-            // ip camera_url
-            v=getsetvalue( "ipcamera_url" );
-            if( v && strlen(v)>5 ) {
-                dvrconfig.setvalue(section,"stream_URL",v);
-            }
-
-            // Physical channel
-            v=getsetvalue( "channel" );
-            if( v ) {
-                dvrconfig.setvalue(section,"channel",v);
-            }
-
-            // recording_mode
-            v=getsetvalue( "recording_mode" );
-            if( v ) {
-                dvrconfig.setvalue(section,"recordmode",v);
-            }
-
-#ifdef APP_PWZ5
-            // force record channel (camera direction)
-            v=getsetvalue( "forcerecordchannel" );
-            if( v ) {
-                dvrconfig.setvalue(section,"forcerecordchannel",v);
-            }
-#endif
-
-            // resolution
-            v=getsetvalue( "resolution" );
-            if( v ) {
-                dvrconfig.setvalue(section,"resolution",v);
-            }
-
-            // frame_rate
-            v=getsetvalue( "frame_rate" );
-            if( v ) {
-                dvrconfig.setvalue(section,"framerate",v);
-            }
-
-            // bit_rate_mode
-            v=getsetvalue( "bit_rate_mode" );
-            if( v ) {
-                if( *(char *)v == '0' ) {
-                    dvrconfig.setvalueint(section,"bitrateen", 0);
-                }
-                else if( *(char *)v == '1' ) {
-                    dvrconfig.setvalueint(section,"bitrateen", 1);
-                    dvrconfig.setvalueint(section,"bitratemode", 0);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"bitrateen", 1);
-                    dvrconfig.setvalueint(section,"bitratemode", 1);
-                }
-            }
-
-            // bit_rate
-            v=getsetvalue( "bit_rate" );
-            if( v ) {
-                dvrconfig.setvalue(section,"bitrate",v);
-            }
-
-            // trigger and osd
-            for( ivalue=1; ivalue<=sensor_number; ivalue++ ) {
-                char trigger[30], osd[30], sensor[30] ;
-                int  tr;
-                sprintf(trigger, "trigger%d", ivalue );
-                sprintf(osd, "sensorosd%d", ivalue);
-
-                // osd
-                if( getsetvalue( "bool_sensor_osd" )!=NULL ) {
-                    sprintf(sensor, "sensor%d_osd", ivalue );
-                    v=getsetvalue( sensor ) ;
-                    if( v ) {
-                        dvrconfig.setvalueint(section, osd, 1);
-                    }
-                    else {
-                        dvrconfig.setvalueint(section, osd, 0);
-                    }
-                }
-
-                // trigger selections (PWII / TVS )
-              tr=0 ;
-              sprintf(sensor, "sensor%d_trigger_on", ivalue );
-              v=getsetvalue( sensor ) ;
-              if( v ) {
-                  tr|=1 ;
-              }
-              sprintf(sensor, "sensor%d_trigger_off", ivalue );
-              v=getsetvalue( sensor ) ;
-              if( v ) {
-                  tr|=2 ;
-              }
-              sprintf(sensor, "sensor%d_trigger_turnon", ivalue );
-              v=getsetvalue( sensor ) ;
-              if( v ) {
-                  tr|=4 ;
-              }
-              sprintf(sensor, "sensor%d_trigger_turnoff", ivalue );
-              v=getsetvalue( sensor ) ;
-              if( v ) {
-                  tr|=8 ;
-              }
-
-              dvrconfig.setvalueint(section, trigger, tr);
-
-            }
-
-            // gforce_trigger
-            v=getsetvalue( "gforce_trigger" );
-            if( v ) {
-                dvrconfig.setvalueint(section,"gforce_trigger", 1 );
+            // osd
+            if( j_camera->getItem( s.printf("sensor%d_osd", ivalue) ) ) {
+                dvrconfig.setvalueint(section, s.printf("sensorosd%d", ivalue), 1);
             }
             else {
-                dvrconfig.setvalueint(section,"gforce_trigger", 0 );
+                dvrconfig.setvalueint(section, s.printf("sensorosd%d", ivalue), 0);
             }
 
-            // gforce_trigger_value
-            v=getsetvalue( "gforce_trigger_value" );
-            if( v ) {
-                dvrconfig.setvalue(section,"gforce_trigger_value", v );
+            // trigger selections (PWII / TVS )
+            if( j_camera->getItem( s.printf( "sensor%d_trigger_on", ivalue) ) ) {
+                tr|=1 ;
+            }
+            if( j_camera->getItem( s.printf( "sensor%d_trigger_off", ivalue) ) ) {
+                tr|=2 ;
+            }
+            if( j_camera->getItem( s.printf( "sensor%d_trigger_turnon", ivalue) ) ) {
+                tr|=4 ;
+            }
+            if( j_camera->getItem( s.printf( "sensor%d_trigger_turnoff", ivalue) ) ) {
+                tr|=8 ;
             }
 
-            // speed_trigger
-            v=getsetvalue( "speed_trigger" );
-            if( v ) {
-                dvrconfig.setvalueint(section,"speed_trigger", 1 );
-            }
-            else {
-                dvrconfig.setvalueint(section,"speed_trigger", 0 );
-            }
-
-            // speed_trigger_value
-            v=getsetvalue( "speed_trigger_value" );
-            if( v ) {
-                dvrconfig.setvalue(section,"speed_trigger_value", v );
-            }
-
-            // pre_recording_time
-            v=getsetvalue( "pre_recording_time" );
-            if( v ) {
-                dvrconfig.setvalue(section,"prerecordtime",v);
-            }
-
-            // post_recording_time
-            v=getsetvalue( "post_recording_time" );
-            if( v ) {
-                dvrconfig.setvalue(section,"postrecordtime",v);
-            }
-
-            // show_gps
-            if( getsetvalue( "bool_show_gps" )!=NULL ) {
-                v=getsetvalue( "show_gps" );
-                if( v ) {
-                    dvrconfig.setvalueint(section,"showgps",1);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"showgps",0);
-                }
-            }
-
-            // gpsunit
-            // speed_display
-            v=getsetvalue( "speed_display" );
-            if( v ) {
-                dvrconfig.setvalue(section,"gpsunit",v);
-            }
-
-            // show_gps_coordinate
-            if( getsetvalue( "bool_show_gps_coordinate" )!=NULL ) {
-                v=getsetvalue( "show_gps_coordinate" );
-                if( v ) {
-                    dvrconfig.setvalueint(section,"showgpslocation",1);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"showgpslocation",0);
-                }
-            }
-
-#ifdef TVS_APP
-
-            // show_medallion
-            if( getsetvalue( "bool_show_medallion" )!=NULL ) {
-                v=getsetvalue( "show_medallion" );
-                dvrconfig.setvalueint(section,"show_medallion",v?1:0);
-            }
-            // show_licenseplate
-            if( getsetvalue( "bool_show_licenseplate" )!=NULL ) {
-                v=getsetvalue( "show_licenseplate" );
-                dvrconfig.setvalueint(section,"show_licenseplate",v?1:0);
-            }
-            // show_ivcs
-            if( getsetvalue( "bool_show_ivcs" )!=NULL ) {
-                v=getsetvalue( "show_ivcs" );
-                dvrconfig.setvalueint(section,"show_ivcs",v?1:0);
-            }
-            // show_medallion
-            if( getsetvalue( "bool_show_cameraserial" )!=NULL ) {
-                v=getsetvalue( "show_cameraserial" );
-                dvrconfig.setvalueint(section,"show_cameraserial",v?1:0);
-            }
-
-#endif
-
-#ifdef PWII_APP
-
-            // show_vri
-            if( getsetvalue( "bool_show_vri" )!=NULL ) {
-                v=getsetvalue( "show_vri" );
-                if( v ) {
-                    dvrconfig.setvalueint(section,"show_vri",1);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"show_vri",0);
-                }
-            }
-
-            // show_policeid
-            if( getsetvalue( "bool_show_policeid" )!=NULL ) {
-                v=getsetvalue( "show_policeid" );
-                if( v ) {
-                    dvrconfig.setvalueint(section,"show_policeid",1);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"show_policeid",0);
-                }
-            }
-
-#endif
-
-            // show_gforce sensor value
-            if( getsetvalue( "bool_show_gforce" )!=NULL ) {
-                v=getsetvalue( "show_gforce" );
-                if( v ) {
-                    dvrconfig.setvalueint(section,"show_gforce",1);
-                }
-                else {
-                    dvrconfig.setvalueint(section,"show_gforce",0);
-                }
-            }
-
-             // record_alarm_mode
-            v=getsetvalue( "record_alarm_mode" ) ;
-            if( v ) {
-                dvrconfig.setvalue( section,"recordalarmpattern", v );
-            }
-            v=getsetvalue( "record_alarm_led" ) ;
-            if( v ) {
-                dvrconfig.setvalue( section,"recordalarm", v );
-            }
-
-             // video_lost_alarm_mode
-            v=getsetvalue( "video_lost_alarm_mode" ) ;
-            if( v ) {
-                dvrconfig.setvalue( section,"videolostalarmpattern", v );
-            }
-            v=getsetvalue( "video_lost_alarm_led" ) ;
-            if( v ) {
-                dvrconfig.setvalue( section,"videolostalarm", v );
-            }
+            dvrconfig.setvalueint(section, s.printf("trigger%d", ivalue), tr);
 
         }
+
+        delete j_camera ;
     }
+    
 
 #ifdef APP_PWZ8
     // bodycam values

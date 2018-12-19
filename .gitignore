@@ -1,8 +1,14 @@
+# VS code
+.vscode/
+.vs/
+
 # Compiled Object files
 *.o
 
-# editor backup files
+# editor backup/tmp files
 *~
+*.TMP
+*.tmp
 
 # target firmware
 HOST_*

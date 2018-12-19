@@ -1,0 +1,12 @@
+{
+    30.12500000002000001000000000000000000000000000000000000000000000000,
+    34294967296,
+    "\u7027\u706d\u444yybb12xafsdfasdfasdf asdf asdf asdf asdf \x \t \b \r \u000a aaa",
+    null,
+    true,
+    false,
+    {},
+    {null,},
+    "aaaray":[1,2,3,4],
+    "abc"
+}
