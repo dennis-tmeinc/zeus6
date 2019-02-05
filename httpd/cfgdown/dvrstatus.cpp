@@ -6,38 +6,6 @@
 #include "../../dvrsvr/dvr.h"
 #include "../../ioprocess/diomap.h"
 
-
-// #define NETDBG
-
-#ifdef NETDBG
-
-int net_addr(char *netname, int port, struct sockad *addr);
-
-// debugging procedures
-int msgfd ;
-
-// send out UDP message use msgfd
-int net_sendmsg( char * dest, int port, const void * msg, int msgsize )
-{
-    struct sockad destaddr ;
-    if( msgfd==0 ) {
-        msgfd = socket( AF_INET, SOCK_DGRAM, 0 ) ;
-    }
-    net_addr(dest, port, &destaddr);
-    return (int)sendto( msgfd, msg, (size_t)msgsize, 0, &(destaddr.addr), destaddr.addrlen );
-}
-
-void net_dprint( char * fmt, ... )
-{
-    char msg[1024] ;
-    va_list ap ;
-    va_start( ap, fmt );
-    vsprintf(msg, fmt, ap );
-    net_sendmsg( "192.168.152.61", 15333, msg, strlen(msg) );
-    va_end( ap );
-}
-#endif
-
 struct channelstate {
     int sig ;
     int rec ;
@@ -60,22 +28,9 @@ int getchannelstate(struct channelstate * chst, unsigned long * streambytes, int
         return rch;
     }
 
-#ifdef NETDBG
-    net_dprint( "getchannelstate: 1.\n");
-#endif
-
     port=15111 ;
     fscanf(portfile, "%d", &port);
-
-#ifdef NETDBG
-    net_dprint( "getchannelstate: 2. port = %d\n", port);
-#endif
-
     sockfd = net_connect( (const char *)"127.0.0.1", port);
-
-#ifdef NETDBG
-    net_dprint( "getchannelstate: 3. connectted, sockfd = %d\n", sockfd );
-#endif
 
     if( sockfd>0 ) {
         req.reqcode=REQGETCHANNELSTATE ;
@@ -93,9 +48,6 @@ int getchannelstate(struct channelstate * chst, unsigned long * streambytes, int
             }
         }
 
-#ifdef NETDBG
-    net_dprint( "getchannelstate: 4. state\n" );
-#endif
         // get stream bytes
         for( i=0; i<rch; i++ ) {
             streambytes[i]=0;
@@ -113,9 +65,6 @@ int getchannelstate(struct channelstate * chst, unsigned long * streambytes, int
         close( sockfd );
     }
 
-#ifdef NETDBG
-    net_dprint( "getchannelstate: 5. finish\n" );
-#endif
     return rch ;
 }
 

@@ -70,9 +70,11 @@ rm sfxrun
 # ln -sf /davinci/dvr/lib/libipcamerasdk.so     /davinci/usr/lib/libipcamerasdk.so
 # ln -sf /davinci/dvr/lib/libssl.so.1.0.0   /davinci/usr/lib/libssl.so.1.0.0
 
-mkdir /davinci/etc/dvr
+ln -sf /davinci/dvr/lib/firmware /davinci/dvr/drivers/firmware 
+
+mkdir /etc/dvr
 # setup DVR configure file
-ln -sf /davinci/dvr/dvrsvr.conf /davinci/etc/dvr/dvr.conf
+ln -sf /davinci/dvr/dvrsvr.conf /etc/dvr/dvr.conf
 
 sync
 

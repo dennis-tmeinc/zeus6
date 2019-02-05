@@ -301,15 +301,15 @@ int main(int argc, char * argv[])
 	socklen_t fromlen ;
 	int dupip = 0 ;
 	
-        if(argc<2)
-          return;
+	if(argc<2)
+		return 1;
 
 	if( argc>1 ) {
 		boardnum = atoi( argv[1] ) ;
 	}
-        if(boardnum==1)
-           return;
-        printf("board num=%d\n",boardnum);
+	if(boardnum==1)
+		return 1;
+	printf("board num=%d\n",boardnum);
 
 	if( boardnum<1 ) {
 		mkrebootmsg(&sendmsg);

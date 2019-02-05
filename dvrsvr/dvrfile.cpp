@@ -47,14 +47,16 @@ int dvrfile::setfilename(const char *filename)
 {
 	m_filename = filename;
 	m_mirror_filename = "";
+	return 0;
 }
 
 int dvrfile::setmirrorname(const char *filename)
 {
 	m_mirror_filename = filename;
+	return 0 ;
 }
 
-int dvrfile::open(char *mode)
+int dvrfile::open(const char *mode)
 {
 	close();
 
@@ -193,7 +195,7 @@ int dvrfile::open(char *mode)
 	return isopen();
 }
 
-int dvrfile::open(const char *filename, char *mode)
+int dvrfile::open(const char *filename, const char *mode)
 {
 	setfilename(filename);
 	return open(mode);
@@ -1019,13 +1021,13 @@ int dvrfile::breakLfile(char *filename, struct dvrtime *locktime)
 		return 0;
 
 	lfile.open(lockname, "w");
-	delete lockname;
-
 	if (!lfile.isopen())
 	{
-		dvr_log("Can't open file for repair. (%s)", (char *)(*lockname));
+		dvr_log("Can't open file for repair. (%s)", lockname);
+		delete lockname ;
 		return 0; // can open
 	}
+	delete lockname;
 
 	// allow write raw data to lfile
 	lfile.m_fileencrypt = 0;
@@ -1102,7 +1104,7 @@ int dvrfile::breakLfile(char *filename, struct dvrtime *locktime)
 
 	dvr_log("Locked file breakdown. (%s)", (char *)newfilename);
 
-	return NULL;
+	return 0;
 }
 
 // rename .264 file as well .idx file

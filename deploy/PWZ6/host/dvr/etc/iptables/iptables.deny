@@ -1,3 +1,0 @@
-#!/bin/sh
-#
-# This script will deny some IPs that set from /usr/share/www/cgi-bin/admin/ipfilter.lua

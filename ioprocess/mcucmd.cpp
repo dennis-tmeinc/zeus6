@@ -225,6 +225,7 @@ int mcu_set_pancam( int cameramode )
 {
 	dvr_log("Select %s.", cameramode?"Zoom Cam":"Pan Cam");
 	mcu_cmd(0x57,1,cameramode);
+	return 0;
 }
 
 int mcu_campower()

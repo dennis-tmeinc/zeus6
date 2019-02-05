@@ -25,6 +25,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
+#include <sys/un.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
@@ -386,9 +387,9 @@ class dvrfile
 
     int setfilename(const char *filename);
     int setmirrorname(const char *filename);
-    int open(char *mode);
+    int open(const char *mode);
 
-    int open(const char *filename, char *mode);
+    int open(const char *filename, const char *mode);
     int writeopen(const char *filename, char *mode, void *pheader);
     void close();
     int writeheader(void *buffer, size_t headersize);
@@ -990,12 +991,28 @@ class playback
 #define DVRMSG 0x774f9a31
 #define DVRKEYINPUT 0x673a4427
 
+/*
 struct sockad
 {
     struct sockaddr addr;
     char padding[128];
     socklen_t addrlen;
 };
+*/
+
+#ifndef __SOCKAD_STRUCT__
+#define __SOCKAD_STRUCT__
+struct sockad {
+    union {
+        struct sockaddr saddr ;
+        struct sockaddr_in saddr_in ;
+        struct sockaddr_in6 saddr_in6 ;
+        struct sockaddr_un saddr_un;
+        char   padding[128];
+    } s ;
+    socklen_t len;
+};
+#endif  // __SOCKAD_STRUCT__
 
 // maximum live fifo size
 extern int net_livefifosize;
@@ -1012,12 +1029,14 @@ int net_recvok(int fd, int tout);
 void net_message();
 int net_listen(int port, int socktype);
 int net_connect(const char *ip, int port);
-int net_peer(int sockfd);
-void net_clean(int sockfd);
 int net_send(int sockfd, void *data, int datasize);
 int net_recv(int sockfd, void *data, int datasize);
+
+int net_peer(int sockfd);
+void net_clean(int sockfd);
+
 int net_onframe(cap_frame *pframe);
-void msg_sendto(const char *host, int port, char *msg, int len);
+void msg_sendto(const char *host, int port, const char *msg, int len);
 // initialize network
 void net_init();
 void net_uninit();

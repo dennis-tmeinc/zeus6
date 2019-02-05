@@ -11,14 +11,14 @@
 
 #include "../../cfg.h"
 
-void runapp(char *const argv[])
+void runapp( const char * argv[])
 {
     int status ;
     pid_t pid ;
     pid=fork();
     if( pid==0 ) {
         // child process
-        execv( argv[0], argv );
+        execv( argv[0], (char * const *)argv );
         exit(1);
     }
     else if( pid>0 ) {
@@ -105,26 +105,26 @@ int main()
 		printf( "(Try press RESET button when message \"Synchronizing\" appear)\n\n" );
 		fflush( stdout );
 
-        char * zargs[10] ;
-
-        zargs[0] = APP_DIR"/lpc21isp" ;
-        zargs[1] = "-try10000" ;				// wait for sync, 1000 times
-        zargs[2] = "-wipe" ;				// erase flash
-        zargs[3] = "-hex" ;					// input .hex file
-        zargs[4] = mcufirmwarefile ;		// firmware file
-#if defined(ZEUS8)    
-        zargs[5] = "/dev/ttyS1" ;			// MCU connection port
-#elif defined (APP_TVS_ZEUS6) || defined (APP_PWZ5)
-        zargs[5] = "/dev/ttyS3" ;			// MCU connection port
+		const char* zargs[] = {
+			APP_DIR "/lpc21isp",
+			"-try10000",	 // wait for sync, 1000 times
+			"-wipe",		 // erase flash
+			"-hex",			 // input .hex file
+			mcufirmwarefile, // firmware file
+#if defined(ZEUS8)
+			"/dev/ttyS1", // MCU connection port
+#elif defined(APP_TVS_ZEUS6) || defined(APP_PWZ5)
+			"/dev/ttyS3", // MCU connection port
 #else
-        zargs[5] = "/dev/ttyS1" ;			// MCU connection port
-#endif        
-        zargs[6] = "115200" ;				// MCU connection baud
-        zargs[7] = "12000" ;				// MCU clock
-        zargs[8] = NULL ;
-        runapp(zargs);
-        
-        printf( "\nMCU firmware update finished!\nPlease reset unit.\n" );
+			"/dev/ttyS1", // MCU connection port
+#endif
+			"115200", // MCU connection baud
+			"12000",  // MCU clock
+			NULL
+		};
+		runapp(zargs);
+
+		printf( "\nMCU firmware update finished!\nPlease reset unit.\n" );
 
     }
 

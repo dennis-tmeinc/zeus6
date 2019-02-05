@@ -4,8 +4,6 @@
 
 include ../config
 
-LDFLAGS=
-
 all: slaveip eaglehost
 
 slaveip: slaveip.c

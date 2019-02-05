@@ -21,7 +21,6 @@ appid=$1
 
 RELEASEFILES='
     dvrsvr/dvrsvr
-    dvrsvr/libfbdraw.so
     dvrtime/dvrtime
     eaglehost/eaglehost
     glog/glog
@@ -31,7 +30,7 @@ RELEASEFILES='
     ioprocess/buzzer
     tdev/tdevd
     tdev/tdevmount
-    dhcp/udhcpc
+    dhcp/udhcpd
     usbgenkey/usbcheck
     tmeft/tmefile
     volumeid/md5check

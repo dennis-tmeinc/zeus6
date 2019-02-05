@@ -4,40 +4,55 @@
 
 include ../../config
 
-SOURCES=
+SOURCES=cfgdown.cpp \
+	cfgreport.cpp\
+	dvrstatus.cpp\
+	gcal.cpp \
+	gcrash.cpp
 
-EXTHEADERS=../../dvrsvr/cfg.h ../../dvrsvr/genclass.h
-EXTSOURCES=../../dvrsvr/config.cpp ../../dvrsvr/string.cpp ../net.cpp
 HEADERS=
 
-OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
+EXTSOURCES=\
+	$(PROJDIR)/dvrsvr/config.cpp \
+	$(PROJDIR)/dvrsvr/string.cpp \
+	$(PROJDIR)/lib/net/net.cpp \
+	$(PROJDIR)/ioprocess/diomap.cpp
 
-LDFLAGS += -lstdc++
+EXTHEADERS=$(PROJDIR)/dvrsvr/cfg.h \
+	$(PROJDIR)/dvrsvr/genclass.h \
+	$(PROJDIR)/lib/net/net.h \
+	$(PROJDIR)/ioprocess/diomap.h
+
+OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
+EXTOBJS = $(patsubst %.cpp, %.o, $(EXTSOURCES))
+
+OBJS += $(EXTOBJS)
 
 TARGET=cfgdown.cgi dvrstatus.cgi cfgreport gcal.cgi gcrash.cgi
 
 all: $(TARGET)
 
-cfgdown.cgi: cfgdown.c $(EXTSOURCES) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ cfgdown.c $(LDFLAGS)
+cfgdown.cgi: cfgdown.o 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-gcal.cgi : gcal.cpp ../../ioprocess/diomap.cpp ../../ioprocess/diomap.h
-	$(CC) $(CFLAGS) -o $@ gcal.cpp ../../ioprocess/diomap.cpp $(LDFLAGS)
+gcal.cgi : gcal.o $(PROJDIR)/ioprocess/diomap.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-gcrash.cgi : gcrash.cpp ../../ioprocess/diomap.cpp ../../ioprocess/diomap.h
-	$(CC) $(CFLAGS) -o $@ gcrash.cpp ../../ioprocess/diomap.cpp $(LDFLAGS)
+gcrash.cgi : gcrash.o $(PROJDIR)/ioprocess/diomap.o 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-dvrstatus.cgi : dvrstatus.cpp ../eagle_setup/getquery.cpp $(EXTHEADERS) $(EXTSOURCES) ../../ioprocess/diomap.cpp ../../ioprocess/diomap.h
-	$(CC) $(CFLAGS) -o $@ dvrstatus.cpp ../net.cpp ../eagle_setup/getquery.cpp ../../ioprocess/diomap.cpp $(LDFLAGS)
+dvrstatus.cgi : dvrstatus.o ../eagle_setup/getquery.o $(PROJDIR)/ioprocess/diomap.o $(PROJDIR)/lib/net/net.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cfgreport : cfgreport.cpp $(EXTHEADERS) $(EXTSOURCES) ../../ioprocess/diomap.cpp ../../ioprocess/diomap.h
-	$(CC) $(CFLAGS) -o $@ cfgreport.cpp ../../ioprocess/diomap.cpp $(EXTSOURCES) $(LDFLAGS)  -lstdc++
+cfgreport : cfgreport.o $(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/ioprocess/diomap.o $(PROJDIR)/lib/net/net.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-%.o : %.c $(HEADERS)
+%.o : %.cpp $(HEADERS) $(EXTHEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
 	rm -f $(TARGET)
+	rm -f $(OBJS)
 	rm -f *.o
 
 

@@ -12,17 +12,13 @@ EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
 EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
-CFLAGS+= -I../dvrsvr
-LDFLAGS= -lstdc++ -lm
+OBJS += $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
-
-dvrtime : $(OBJS) $(EXTSOURCES) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(EXTSOURCES) $(LDFLAGS)
-#	cp dvrtime /home/jianpeng/eagle34/dvrtest/
+dvrtime : $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 dtime : $(SOURCES) $(EXTSOURCES) $(EXTHEADERS)
-	gcc $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)
-
+	gcc $(CFLAGS_PC) -o $@ $(SOURCES) $(EXTSOURCES) -lstdc++
 
 %.o : %.cpp $(HEADERS)  $(EXTHEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -2,56 +2,6 @@
 #include "../../cfg.h"
 #include "../../dvrsvr/dvr.h"
 
-// #define NETDBG
-
-#ifdef NETDBG
-
-// debugging procedures
-
-int net_addr(char *netname, int port, struct sockad *addr)
-{
-    struct addrinfo hints;
-    struct addrinfo *res;
-    char service[20];
-
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = PF_UNSPEC;
-    hints.ai_socktype = SOCK_DGRAM;
-    sprintf(service, "%d", port);
-    res = NULL;
-    if (getaddrinfo(netname, service, &hints, &res) != 0) {
-        return -1;
-    }
-    addr->addrlen = res->ai_addrlen;
-    memcpy(&addr->addr, res->ai_addr, res->ai_addrlen);
-    freeaddrinfo(res);
-    return 0;
-}
-
-int msgfd ;
-
-// send out UDP message use msgfd
-int net_sendmsg( char * dest, int port, const void * msg, int msgsize )
-{
-    struct sockad destaddr ;
-    if( msgfd==0 ) {
-        msgfd = socket( AF_INET, SOCK_DGRAM, 0 ) ;
-    }
-    net_addr(dest, port, &destaddr);
-    return (int)sendto( msgfd, msg, (size_t)msgsize, 0, &(destaddr.addr), destaddr.addrlen );
-}
-
-void net_dprint( char * fmt, ... )
-{
-    char msg[1024] ;
-    va_list ap ;
-    va_start( ap, fmt );
-    vsprintf(msg, fmt, ap );
-    net_sendmsg( "192.168.152.61", 15333, msg, strlen(msg) );
-    va_end( ap );
-}
-#endif
-
 // wait for socket ready to read (timeout in micro-seconds)
 int net_recvok(int fd, int tout)
 {
@@ -231,19 +181,10 @@ void dvr_getjpeg()
 // return 0: for keep alive
 int main()
 {
-#ifdef NETDBG
-    net_dprint( "dvrstatus started.\n");
-#endif
-
     // print headers
     printf( "HTTP/1.1 200 OK\r\nContent-Type: image/jpeg\r\n\r\n" );
     fflush(stdout);
     dvr_getjpeg();
-
-#ifdef NETDBG
-    net_dprint( "dvrstatus ended.\n");
-#endif
-
     return 1;
 }
 

@@ -12,8 +12,8 @@ EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h
 EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
-CFLAGS+= -I. -I../revserver
-LDFLAGS= -lstdc++ -lpthread
+CFLAGS += -I. -I../revserver
+LDFLAGS += -lpthread
 
 all: asender alistener
 

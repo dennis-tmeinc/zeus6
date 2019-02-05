@@ -70,7 +70,7 @@ int net_recvfrom(int s, void *packet, int psize, struct sockad *sad);
 
 int net_send(int s, void *packet, int psize);
 int net_sendx(int s, void *packet, int psize);
-int net_sendall(int s, char *data, int dsize);
+int net_sendall(int s, void *data, int dsize);
 int net_recv(int s, void *packet, int psize);
 int net_recvx(int s, void *packet, int psize);
 

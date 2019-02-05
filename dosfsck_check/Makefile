@@ -7,14 +7,11 @@ HEADERS=
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-LDFLAGS= -lstdc++
-
-
 dosfsckcheck : $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS)  $(LDFLAGS)
 
 %.o : %.cpp
-	$(CC) $(CFLAGS) -Wall -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o

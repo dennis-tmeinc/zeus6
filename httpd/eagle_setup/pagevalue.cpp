@@ -26,61 +26,71 @@ int hasfile( char * fn )
     return 0 ;
 }
 
-int savequery( char * valuefile )
+int savequery(const char *valuefile)
 {
-    char qvalue[1024] ;
-    char * qp ;
-    char * query ;
-    int x ;
-    int item=0;
+    char qvalue[2048];
+    char *qp;
+    char *query;
+    int x;
+    int item = 0;
 
     // JSON obj
-    json * jq = new json(JSON_Object) ;
-    
+    json *jq = new json(JSON_Object);
+
     query = getenv("QUERY_STRING");
-    while( query && *query ) {
-        x = decode( query, qvalue, sizeof(qvalue) ) ;
-        if( x>1 ) {
-             qp=strchr(qvalue,'=');
-            if( qp ) {
-                *qp=0 ;
+    while (query && *query)
+    {
+        x = decode(query, qvalue, sizeof(qvalue));
+        if (x > 1)
+        {
+            qp = strchr(qvalue, '=');
+            if (qp)
+            {
+                *qp = 0;
                 qp++;
-                if( strcmp(qvalue, "page")!=0 ) {
-                    jq->addStringItem(qvalue,  qp );
+                if (strcmp(qvalue, "page") != 0)
+                {
+                    jq->addStringItem(qvalue, qp);
                     item++;
                 }
             }
         }
-        if( query[x]=='\0' )
+        if (query[x] == '\0')
             break;
-        else {
-            query+=x+1;
+        else
+        {
+            query += x + 1;
         }
     }
-    query = getenv("POST_STRING" );
-    while( query && *query ) {
-        x = decode( query, qvalue, sizeof(qvalue) ) ;
-        if( x>1 ) {
-            qp=strchr(qvalue,'=');
-            if( qp ) {
-                *qp=0 ;
+    query = getenv("POST_STRING");
+    while (query && *query)
+    {
+        x = decode(query, qvalue, sizeof(qvalue));
+        if (x > 1)
+        {
+            qp = strchr(qvalue, '=');
+            if (qp)
+            {
+                *qp = 0;
                 qp++;
-                if( strcmp(qvalue, "page")!=0 ) {
-                    jq->addStringItem(qvalue,  qp );
+                if (strcmp(qvalue, "page") != 0)
+                {
+                    jq->addStringItem(qvalue, qp);
                     item++;
                 }
             }
         }
-        if( query[x]=='\0' )
+        if (query[x] == '\0')
             break;
-        else {
-            query+=x+1;
+        else
+        {
+            query += x + 1;
         }
     }
-    jq->addStringItem("eobj","");
+    jq->addStringItem("eobj", "");
     jq->saveFile(valuefile);
-    delete jq ;
-    return item ;
+    delete jq;
+    return item;
 }
 
 void system_savevalue()
@@ -88,7 +98,6 @@ void system_savevalue()
     char * v ;
 
     savequery("system_value");
-
     // change camera number
     v = getquery( "totalcamera" );
     if( v!=NULL ) {

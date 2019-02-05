@@ -65,6 +65,7 @@ int usb_resetdev(int bus, int dev)
 int usb_reset()
 {
 	// return usb_resetdev(1,1);
+	return 0;
 }
 
 static int adb_local_connect()
@@ -72,7 +73,7 @@ static int adb_local_connect()
 	return net_connect("127.0.0.1", ADB_PORT);
 }
 
-static void adb_senddata(int fd, char * data)
+static void adb_senddata(int fd, const char * data)
 {
 	int len ;
 	char lpre[8] ;
@@ -83,7 +84,7 @@ static void adb_senddata(int fd, char * data)
 	sprintf( lpre, "%04x", len ) ;
 	
 	net_sendall( fd, lpre, 4 ) ;
-	net_sendall( fd, data, len );
+	net_sendall( fd, (void *)data, len );
 }
 
 // return -1 for error
@@ -113,7 +114,7 @@ static int adb_status(int fd)
 	}
 }
 
-static int adb_service( int fd, char * service, char * device = NULL )
+static int adb_service( int fd, const char * service, const char * device = NULL )
 {
 	if( device && strncmp( service, "host", 4 ) != 0) {
 		// set transport

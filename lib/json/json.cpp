@@ -1,156 +1,133 @@
 /*
 	A very simple json parser and encoder
+	by Dennis Chen@tme
 */
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "json.h"
 
-// construct a typed json object
-json::json(int typ)
-{
-	next = NULL;
-	child = NULL;
-	type = typ;
-	valueString = NULL;
-	name = NULL;
-}
-
 json::~json()
 {
 	cleanup();
-	if (name != NULL)
-	{
-		delete name;
+	if (name != NULL) {
+		delete[] name;
 	}
 }
 
 // cleanup child objects and valueString (keep object name) and set type to null
 void json::cleanup()
 {
-	while (child != NULL)
-	{
-		json *n = child->next;
+	while (child != NULL) {
+		json* n = child->next;
 		delete child;
 		child = n;
 	}
-	if (valueString != NULL)
-	{
-		delete valueString;
+	if (valueString != NULL) {
+		delete[] valueString;
 		valueString = NULL;
 	}
 	type = JSON_Null;
 }
 
-json &json::setName(const char *newname)
+json& json::setName(const char* newname)
 {
-	if (name != NULL)
-	{
-		delete name;
+	if (name != NULL) {
+		delete[] name;
 		name = NULL;
 	}
-	if (newname != NULL)
-	{
+	if (newname != NULL) {
 		name = new char[strlen(newname) + 1];
 		strcpy(name, newname);
 	}
 	return *this;
 }
 
-json &json::setNull()
+json& json::setNumber(double dvalue)
 {
-	type = JSON_Null;
-	return *this;
-}
-
-json &json::setBool(int value)
-{
-	type = (value) ? JSON_True : JSON_False;
-	return *this;
-}
-
-json &json::setNumber(double dvalue)
-{
-	type = JSON_Number;
 	valueNumber = dvalue;
-	return *this;
+	return setType(JSON_Number);
 }
 
-json &json::setString(const char *value)
+double json::getNumber()
+{
+	if (type == JSON_Number) {
+		return valueNumber;
+	} else if (type == JSON_String) {
+		if (sscanf(getString(), "%lg", &valueNumber) > 0) {
+			return valueNumber;
+		} else {
+			return 0;
+		}
+	} else {
+		return (double)(int)(type == JSON_True);
+	}
+}
+
+json& json::setString(const char* value)
 {
 	type = JSON_String;
-	if (valueString != NULL)
-		delete valueString;
-	if (value != NULL)
-	{
+	if (valueString != NULL) {
+		delete[] valueString;
+		valueString = NULL;
+	}
+	if (value != NULL) {
 		valueString = new char[strlen(value) + 1];
 		strcpy(valueString, value);
-	}
-	else
-	{
+	} else {
 		valueString = new char[1];
 		*valueString = 0;
 	}
 	return *this;
 }
 
-json &json::setArray()
+const char* json::getString()
 {
-	cleanup();
-	type = JSON_Array;
-	return *this;
-}
-
-json &json::setObject()
-{
-	cleanup();
-	type = JSON_Object;
-	return *this;
+	if (type == JSON_String && valueString != NULL)
+		return valueString;
+	else if (type == JSON_Number) {
+		if (valueString)
+			delete[] valueString;
+		valueString = new char[30];
+		// precision 13 should be enough for all my applications
+		sprintf(valueString, "%.13lg", valueNumber);
+		return valueString;
+	} else if (type == JSON_Object) {
+		return "object";
+	} else if (type == JSON_Array) {
+		return "array";
+	} else if (type == JSON_True) {
+		return "true";
+	} else if (type == JSON_False) {
+		return "false";
+	} else if (type == JSON_Null) {
+		return "null";
+	} else
+		return "";
 }
 
 // add item to the end of child list
-json &json::addItem(json *item)
+json& json::addItem(json* item)
 {
-	if (child)
-	{
-		json *lastchild = child;
+	if (child != NULL) {
+		json* lastchild = child;
 		while (lastchild->next)
 			lastchild = lastchild->next;
 		lastchild->next = item;
-	}
-	else
-	{
+	} else {
 		child = item;
 	}
 	item->next = NULL;
 	return *this;
 }
 
-// add an number item to object
-json &json::addNumberItem(const char *nam, double dvalue)
-{
-	json *j = new json();
-	j->setNumber(dvalue);
-	j->setName(nam);
-	return addItem(j);
-}
-
-// add a string item to object
-json &json::addStringItem(const char *nam, const char *string)
-{
-	json *j = new json();
-	j->setString(string);
-	j->setName(nam);
-	return addItem(j);
-}
-
 int json::itemSize()
 {
 	int siz = 0;
-	json *n = child;
-	while (n)
-	{
+	json* n = child;
+	while (n) {
 		siz++;
 		n = n->next;
 	}
@@ -158,38 +135,34 @@ int json::itemSize()
 }
 
 // get child item by index
-json *json::getItem(int index)
+json* json::getItem(int index)
 {
-	json *n = child;
-	while (index-- > 0 && n != NULL)
-	{
+	json* n = child;
+	while (index-- > 0 && n != NULL) {
 		n = n->next;
 	}
 	return n;
 }
 
 // get child item by name
-json *json::getItem(const char *iname)
+json* json::getItem(const char* iname)
 {
 	if (iname == NULL)
 		return NULL;
-	json *n = child;
-	while (n != NULL)
-	{
-		if (n->name != NULL && strcmp(n->name, iname) == 0)
-		{
-			return n;
+	json* n = child;
+	while (n != NULL) {
+		if (n->name != NULL && strcmp(n->name, iname) == 0) {
+			break;
 		}
 		n = n->next;
 	}
-	return NULL;
+	return n;
 }
 
 // skip space and comments
-static const char *skip_space(const char *v)
+static const char* skip_space(const char* v)
 {
-	while (*v)
-	{
+	while (*v) {
 		while (*v > 0 && *v <= ' ')
 			v++;
 		if (*v == '/') //  check for comments
@@ -198,13 +171,11 @@ static const char *skip_space(const char *v)
 			{
 				v += 2;
 				while (*v && *v != '\n')
-					v++; // skip until new line
-			}
-			else if (*(v + 1) == '*') // multi-line comment
+					v++;				// skip until new line
+			} else if (*(v + 1) == '*') // multi-line comment
 			{
 				v += 2;
-				while (*v)
-				{
+				while (*v) {
 					if (*v == '*' && *(v + 1) == '/') // end of multiline comment "*/"
 					{
 						v += 2;
@@ -212,12 +183,14 @@ static const char *skip_space(const char *v)
 					}
 					v++;
 				}
-			}
-			else
+			} else
 				break;
-		}
-		else
+		} else if (*v == '#') //  # sign single line comment (my extensions)
 		{
+			v++;
+			while (*v && *v != '\n')
+				v++; // skip until new line
+		} else {
 			break;
 		}
 	}
@@ -225,47 +198,53 @@ static const char *skip_space(const char *v)
 }
 
 // parse string from text
-void json::parse_string(const char *text, const char **parse_end)
+void json::parse_string(const char* text, const char** parse_end)
 {
-	cleanup();
-	text = skip_space(text);
-
-	if (*text != '\"')
-	{
+	if (*text != '\"') {
 		// Error, not a string
-		if (parse_end != NULL)
-		{
+		if (parse_end != NULL) {
 			*parse_end = text;
 		}
-		return;
+		type = JSON_Null;
+		return ;
 	}
-	text++;
 
 	// estimate string size
-	const char *t = text;
-	while (*t && *t != '\"')
-	{
+	const char* t = text+1;
+	while (*t && *t != '\"') {
 		if (*t++ == '\\')
-			t++; /* Skip escaped quotes. */
+			t++; // Skip escaped quotes.
 	}
-	int len = (t - text) + 1;
+	if (*t != '\"') {
+		// Error, string not completed
+		if (parse_end != NULL) {
+			*parse_end = text;
+		}
+		type = JSON_Null;
+		return ;
+	}
+
 	type = JSON_String;
-	valueString = new char[len + 1];
-	char *v = valueString;
-	while (*text && (v - valueString) < len)
-	{
+	int len = (t - text) + 2;
+	if (valueString != NULL)
+		delete valueString;
+	valueString = new char[len + 2];
+	char* v = valueString;
+	unsigned int uc;
+	int n;
+
+	text++;
+	while (*text && (v - valueString) < len) {
 		if (*text == '\"') // end of string
 		{
 			text++;
 			break;
-		}
-		else if (*text == '\\') // escape
+		} else if (*text == '\\') // escape
 		{
 			if (*++text == 0)
 				break;
 
-			switch (*text)
-			{
+			switch (*text) {
 			case 'n':
 				*v++ = '\n';
 				text++;
@@ -291,30 +270,37 @@ void json::parse_string(const char *text, const char **parse_end)
 				text++;
 				break;
 
+			case 'v':
+				*v++ = '\v';
+				text++;
+				break;
+
 			case 'u':
 				text++;
-				{
-					unsigned int uc = 0;
-					int n = 0;
-					if (sscanf(text, "%4x%n", &uc, &n) > 0)
-					{
-						text += n;
-						// convert to utf8
-						if (uc < 0x80)
-						{
-							*v++ = (char)uc;
-						}
-						else if (uc < 0x800)
-						{
-							*v++ = (char)(0xc0 | (uc >> 6));
-							*v++ = (char)(0x80 | (uc & 0x3f));
-						}
-						else
-						{
-							*v++ = (char)(0xe0 | (uc >> 12));
+				if (sscanf(text, "%4x%n", &uc, &n) > 0) {
+					text += n;
+					// convert to utf8
+					if (uc <= 0x7f) {
+						*v++ = (char)uc;
+					} else if (uc <= 0x7ff) {
+						*v++ = (char)(0xc0 | (uc >> 6));
+						*v++ = (char)(0x80 | (uc & 0x3f));
+					} else if (uc >= 0xD800 && uc <= 0xDBFF && *text == '\\' && *(text + 1) == 'u') {
+						// UTF-16 surrogate pair (U+010000 to U+10FFFF)
+						unsigned int lowsur; // low surrogates
+						text += 2;
+						if (sscanf(text, "%4x%n", &lowsur, &n) > 0) {
+							text += n;
+							uc = ((uc - 0xD800) << 10) + (lowsur - 0xDC00) + 0x10000;
+							*v++ = (char)(0xf0 | ((uc >> 18) & 0x07));
+							*v++ = (char)(0x80 | ((uc >> 12) & 0x3f));
 							*v++ = (char)(0x80 | ((uc >> 6) & 0x3f));
 							*v++ = (char)(0x80 | (uc & 0x3f));
 						}
+					} else {
+						*v++ = (char)(0xe0 | (uc >> 12));
+						*v++ = (char)(0x80 | ((uc >> 6) & 0x3f));
+						*v++ = (char)(0x80 | (uc & 0x3f));
 					}
 				}
 				break;
@@ -323,195 +309,122 @@ void json::parse_string(const char *text, const char **parse_end)
 				*v++ = *text++;
 				break;
 			}
-		}
-		else
-		{
+		} else {
 			*v++ = *text++;
 		}
 	}
 
 	*v = 0;
-	if (parse_end != NULL)
-	{
+	if (parse_end != NULL) {
 		*parse_end = text;
 	}
 }
 
-void json::parse_array(const char *text, const char **parse_end)
+// parse object or array
+void json::parse_object(const char* text, const char** parse_end)
 {
 	cleanup();
-
-	text = skip_space(text);
-	if (*text == '[')
-	{
-		type = JSON_Array;
-		text = skip_space(text + 1);
-		if (*text == ']') // empty array
-		{
-			if (parse_end != NULL)
-			{
-				*parse_end = text + 1;
-			}
-			return;
-		}
-		while (*text)
-		{
-			json *js = new json();
-			js->parse(text, &text);
-			addItem(js);
-
+	if (*text == '{' || *text == '[') {
+		type = *text == '{' ? JSON_Object : JSON_Array;
+		text++;
+		while (*text) {
+			json* n = new json();
+			n->parse(text, &text);
 			text = skip_space(text);
-			if (*text == ']')// array completed
-			{ 
+			if (*text == ',') {
+				text++;
+				addItem(n);
+				continue;
+			} else if (*text == '}' || *text == ']') // object completed
+			{
+				if (n->isNull()) {
+					delete n;
+				} else {
+					addItem(n);
+				}
 				text++;
 				break;
-			}
-			else if (*text == ',')
-			{
-				text++;
-				continue;
-			}
-			else
-			{
-				cleanup();
+			} else {
+				delete n;
+				// error!
+				type = JSON_Null;
 				break;
 			}
 		}
 	}
-
-	if (parse_end != NULL)
-	{
+	if (parse_end != NULL) {
 		*parse_end = text;
 	}
 }
 
-void json::parse_object(const char *text, const char **parse_end)
-{
-	cleanup();
-
-	text = skip_space(text);
-	if (*text == '{')
-	{
-		type = JSON_Object;
-		text = skip_space(text + 1);
-		if (*text == '}') // empty object
-		{ 
-			if (parse_end != NULL)
-			{
-				*parse_end = text + 1;
-			}
-			return;
-		}
-		while (1)
-		{
-			// get items name
-			json *js = new json();
-			js->parse(text, &text);
-			text = skip_space(text);
-			if (js->isString() && *text == ':')
-			{
-				// move value to name
-				js->name = js->valueString;
-				js->valueString = NULL;
-
-				js->parse(text + 1, &text);
-				text = skip_space(text);
-			}
-			addItem(js);
-			if (*text == '}') // object completed
-			{ 
-				text++;
-				break;
-			}
-			else if (*text == ',')
-			{
-				text++;
-				continue;
-			}
-			else
-			{
-				// error
-				cleanup();
-				break;
-			}
-		}
-	}
-	if (parse_end != NULL)
-	{
-		*parse_end = text;
-	}
-}
-
-json &json::parse(const char *text, const char **parse_end)
+// parse json value only
+void json::parse_value(const char* text, const char** parse_end)
 {
 	text = skip_space(text);
-	if (strncmp(text, "null", 4) == 0)
-	{
+	if (strncmp(text, "null", 4) == 0) {
 		text += 4;
-		setNull();
-	}
-	else if (strncmp(text, "false", 5) == 0)
-	{
+		type = JSON_Null;
+	} else if (strncmp(text, "false", 5) == 0) {
 		text += 5;
-		setFalse();
-	}
-	else if (strncmp(text, "true", 4) == 0)
-	{
+		type = JSON_False;
+	} else if (strncmp(text, "true", 4) == 0) {
 		text += 4;
-		setTrue();
-	}
-	else if (*text == '{')
-	{
+		type = JSON_True;
+	} else if (*text == '{' || *text== '[' ) {
 		parse_object(text, &text);
-	}
-	else if (*text == '[')
-	{
-		parse_array(text, &text);
-	}
-	else if (*text == '\"')
-	{
+	} else if (*text == '\"') {
 		// parse string
 		parse_string(text, &text);
-	}
-	else
-	{
+	} else {
 		// try parse as an number
-		double dv;
-		int n = 0;
-		if (sscanf(text, "%lg%n", &dv, &n) > 0)
-		{
-			setNumber(dv);
+		int n;
+		if (sscanf(text, "%lg%n", &valueNumber, &n) > 0) {
+			type = JSON_Number;
 			text += n;
-		}
-		else
-		{
+		} else {
 			// failed all json types
-			cleanup();
+			type = JSON_Null;
 		}
 	}
-
-	if (parse_end != NULL)
-	{
+	if (parse_end != NULL) {
 		*parse_end = text;
 	}
-	return *this;
+}
+
+// parse json object (name:value pair)
+void json::parse(const char* text, const char** parse_end)
+{
+	parse_value(text, &text);
+	if (isString())  {
+		text = skip_space(text);
+		if (*text == ':') {		// name:value pair?
+			if( name != NULL ) 
+				delete[] name ;
+			// use string value as name
+			name = valueString ;
+			valueString = NULL ;
+
+			// parse the real value
+			parse_value(text + 1, &text);
+		}
+	}
+	if (parse_end != NULL) {
+		*parse_end = text;
+	}
 }
 
 // encode string,
 // return number of chars used, return 0 if failed.
-int json::encode_string(char *text, int len)
+int json::encode_string(char* text, int len)
 {
-	char *t = text;
+	char* t = text;
 	*t++ = '\"'; // quote
-	char *v = valueString;
-	if (v != NULL)
-	{
-		while (*v)
-		{
+	if (valueString != NULL) {
+		char* v = valueString;
+		while (*v) {
 			if ((len - (t - text) - 5) < 0) // no enough space, failed
 				return 0;
-			switch (*v)
-			{
+			switch (*v) {
 			case '\n':
 				*t++ = '\\';
 				*t++ = 'n';
@@ -547,6 +460,11 @@ int json::encode_string(char *text, int len)
 				*t++ = '\\';
 				v++;
 				break;
+			case '/':
+				*t++ = '\\';
+				*t++ = '/';
+				v++;
+				break;
 			default:
 				*t++ = *v++;
 				break;
@@ -558,96 +476,77 @@ int json::encode_string(char *text, int len)
 	return t - text;
 }
 
-// encode array
+// encode object/array
 // return number of chars used, return 0 if failed.
-int json::encode_array(char *text, int len)
+int json::encode_object(char* text, int len, int indent)
 {
-	int n = 0;
-	char *t = text;
-	*t++ = '['; // start of array
-	json *item = child;
-	while (item != NULL)
-	{
-		if ((len - (t - text) - 5) < 0) // no enough space, failed
-			return 0;
-
-		n = item->encode(t, (len - (t - text) - 5));
-		if (n <= 0) // failed
-			return 0;
-		t += n;
-		item = item->next;
-		if (item)
-		{
-			*t++ = ',';
-			*t++ = ' '; // a space
-		}
-	}
-	*t++ = ']'; // end of array
-	*t = 0;
-	return t - text;
-}
-
-// encode object
-// return number of chars used, return 0 if failed.
-int json::encode_object(char *text, int len)
-{
-	int n = 0;
-	char *t = text;
+	int n;
 	int idx = 0;
+	char* t = text;
 
-	*t++ = '{'; // begin of object
-	json *item = child;
-	while (item != NULL)
-	{
+	// begin of object/array
+	*t++ = type == JSON_Object ? '{' : '[';
+
+	json* item = child;
+	while (item != NULL) {
 		if ((len - (t - text) - 5) < 0) // no enough space, failed
 			return 0;
 
-		if (item->name != NULL)
-		{
-			char *saveValue = item->valueString; // save valueString
-			item->valueString = item->name;		 // replace value with name for encoder
-			n = item->encode_string(t, (len - (t - text) - 5));
-			item->valueString = saveValue; // restore value
+		// indent
+		*t++ = '\n';
+		for (n = 0; n <= indent; n++) {
+			*t++ = ' ';
+			*t++ = ' ';
 		}
-		else
-		{
-			n = sprintf(t, "\"%d\"", idx); // no name field, use idx number
-		}
-		if (n <= 0) // failed
-			return 0;
-		t += n;
-		*t++ = ':';
 
-		n = item->encode(t, (len - (t - text) - 5));
+		if (type == JSON_Object) {
+			if (item->name != NULL) {
+				char* saveValue = item->valueString;				// save valueString
+				item->valueString = item->name;						// replace value with name for encoder
+				n = item->encode_string(t, (len - (t - text) - 5)); // encode name
+				item->valueString = saveValue;						// restore value
+			} else {
+				n = sprintf(t, "\"%d\"", idx); // no name field, use idx number
+			}
+			if (n <= 0) // failed
+				return 0;
+			t += n;
+			*t++ = ':';
+		}
+
+		n = item->encode(t, (len - (t - text) - 5), indent + 1);
 		if (n <= 0) // failed
 			return 0;
 		t += n;
 		item = item->next;
-		if (item)
-		{
+		if (item) {
 			*t++ = ',';
-			*t++ = ' '; // a space
 			idx++;
+		} else {
+			// indent
+			*t++ = '\n';
+			for (n = 0; n < indent; n++) {
+				*t++ = ' ';
+				*t++ = ' ';
+			}
+			break;
 		}
 	}
-	*t++ = '}'; // end of object
+	// end of object/array
+	*t++ = type == JSON_Object ? '}' : ']';
 	*t = 0;
 	return t - text;
 }
 
 // encode this json object
 //    return
-int json::encode(char *text, int len)
+int json::encode(char* text, int len, int indent)
 {
-	if (len < 20)
-	{ // at lease 20 bytes
+	if (len < 20) {
+		// at lease 20 bytes
 		return 0;
 	}
-	switch (type)
-	{
-	case JSON_Null:
-		strcpy(text, "null");
-		return 4;
+	switch (type) {
 	case JSON_False:
 		strcpy(text, "false");
 		return 5;
@@ -660,22 +559,23 @@ int json::encode(char *text, int len)
 	case JSON_String:
 		return encode_string(text, len);
 	case JSON_Array:
-		return encode_array(text, len);
 	case JSON_Object:
-		return encode_object(text, len);
+		return encode_object(text, len, indent);
+	default:
+		// include null
+		strcpy(text, "null");
+		return 4;
 	}
-	return 0;
 }
 
 // clone from source json
-json &json::clone(const json &src)
+json& json::clone(const json& src)
 {
-	json *n;
+	json* n;
 	cleanup();
 	setName(src.name);
 	type = src.type;
-	switch (type)
-	{
+	switch (type) {
 	case JSON_Number:
 		setNumber(src.valueNumber);
 		break;
@@ -685,9 +585,8 @@ json &json::clone(const json &src)
 	case JSON_Array:
 	case JSON_Object:
 		n = src.child;
-		while (n != NULL)
-		{
-			json *i = new json();
+		while (n != NULL) {
+			json* i = new json();
 			i->clone(*n);
 			addItem(i);
 			n = n->next;
@@ -699,20 +598,17 @@ json &json::clone(const json &src)
 	return *this;
 }
 
-json &json::loadFile(const char *filename)
+json& json::loadFile(const char* filename)
 {
-	FILE *f = fopen(filename, "r");
-	if (f)
-	{
+	FILE* f = fopen(filename, "r");
+	if (f) {
 		fseek(f, 0, SEEK_END);
 		int l = ftell(f);
-		if (l > 0)
-		{
-			char *buf = new char[l + 2];
+		if (l > 0) {
+			char* buf = new char[l + 1];
 			fseek(f, 0, SEEK_SET);
 			l = fread(buf, 1, l, f);
-			if (l > 0)
-			{
+			if (l > 0) {
 				buf[l] = 0;
 				parse(buf);
 			}
@@ -723,15 +619,15 @@ json &json::loadFile(const char *filename)
 	return *this;
 }
 
-void json::saveFile(const char *filename)
+#define MAX_JSON_FILE_SIZE	(100000)
+
+void json::saveFile(const char* filename)
 {
-	char *buf = new char[60000];
-	int l = encode(buf, 60000);
-	if (l > 0)
-	{
-		FILE *f = fopen(filename, "w");
-		if (f)
-		{
+	char* buf = new char[MAX_JSON_FILE_SIZE];
+	int l = encode(buf, MAX_JSON_FILE_SIZE);
+	if (l > 0) {
+		FILE* f = fopen(filename, "w");
+		if (f) {
 			fwrite(buf, 1, l, f);
 			fclose(f);
 		}

@@ -6,7 +6,6 @@ include config
 
 SUBDIRS = cfg\
     dvrsvr\
-    fb\
     dvrtime\
     eaglehost\
     glog\
@@ -20,13 +19,13 @@ SUBDIRS = cfg\
     tab102\
     lpc21isp\
     smartupload\
-    smartupload2\
     filert\
     zdaemon\
     rconn\
     fat32vol\
     dhcp\
     bodycamd\
+    fw_env\
     dosfsck_check
 
 .PHONY : $(SUBDIRS) applications

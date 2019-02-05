@@ -4,8 +4,8 @@
 
 #include "LzmaEnc.h"
 
-static void *SzAlloc(void *p, size_t size) { p = p; return malloc(size); }
-static void SzFree(void *p, void *address) { p = p; free(address); }
+static void *SzAlloc(ISzAllocPtr p, size_t size){ (void)p; return malloc(size); }
+static void SzFree(ISzAllocPtr p, void *address){ (void)p; free(address); }
 static ISzAlloc g_Alloc = { SzAlloc, SzFree } ;
 
 int lzmaenc( unsigned char * lzmabuf, int lzmasize, unsigned char * src, int srcsize )

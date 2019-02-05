@@ -48,10 +48,10 @@ int   turndiskon_power=0;
 
 char *basefilename(const char *fullpath)
 {
-    char *basename;
+    const char *basename;
     basename = strrchr( fullpath, '/' ) ;
     if( basename!=NULL ) {
-		return basename+1 ;
+		return (char *)basename+1 ;
 	}
 	else {
 		return (char *)fullpath ;
@@ -709,9 +709,9 @@ int get_base_dir(char *base, int size, char *busname_dir)
 
 void formatflash(char *path)
 {
-	char base[256];
+	char base[128];
 	char devname[60];
-	char syscommand[80];
+	char syscommand[256];
 	char filename[256];
 	int ret;
 	char *ptemp;

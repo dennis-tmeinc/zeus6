@@ -102,7 +102,7 @@ printf( "Open serial port :%s :%d\n",     (char *)device, buadrate );
 
 int serial_close( int handle )
 {
-	close( handle );
+	return close( handle );
 }
 
 //

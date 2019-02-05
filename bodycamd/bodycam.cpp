@@ -126,7 +126,7 @@ void bodycam::onKeyInput(char *keyInput)
 }
 
 // return 1: if received buffer can be parsed as json object
-int bodycam::onrecv()
+void bodycam::onrecv()
 {
     const char *ep;
     while (recvPos > 2)
@@ -272,6 +272,7 @@ int bodycam::receive()
     {
         recvPos = 0;
     }
+    return 0;
 }
 
 int bodycam::send(char *buf)
@@ -295,17 +296,17 @@ int bodycam::send(char *buf)
 
 int bodycam::sendCmd(int msg_id)
 {
-    send(string().printf("{\"token\":%d,\"msg_id\":%d}", msg_token, msg_id));
+    return send(string().printf("{\"token\":%d,\"msg_id\":%d}", msg_token, msg_id));
 }
 
-int bodycam::sendCmd(int msg_id, char *type)
+int bodycam::sendCmd(int msg_id, const char *type)
 {
-    send(string().printf("{\"token\":%d,\"msg_id\":%d,\"type\":\"%s\"}", msg_token, msg_id, type));
+    return send(string().printf("{\"token\":%d,\"msg_id\":%d,\"type\":\"%s\"}", msg_token, msg_id, type));
 }
 
-int bodycam::sendCmd(int msg_id, char *type, char *param)
+int bodycam::sendCmd(int msg_id, const char *type, const char *param)
 {
-    send(string().printf("{\"token\":%d,\"msg_id\":%d,\"type\":\"%s\",\"param\":\"%s\"}", msg_token, msg_id, type, param));
+    return send(string().printf("{\"token\":%d,\"msg_id\":%d,\"type\":\"%s\",\"param\":\"%s\"}", msg_token, msg_id, type, param));
 }
 
 void bodycam::getStatus()

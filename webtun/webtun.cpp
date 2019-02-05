@@ -51,7 +51,7 @@ int gettimems()
 }
 
 // write log
-void log(char *fmt, ...)
+void log(const char *fmt, ...)
 {
 	if( *(char *)g_logfile ) {
 		long o1=0 , o2=0, r ;

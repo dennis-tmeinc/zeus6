@@ -1,21 +1,22 @@
 
 include ../config
 
+LDFLAGS += -lpthread
+
+SOURCES=filert.c parseconfig.c
+
+OBJS = $(patsubst %.c, %.o, $(SOURCES))
+
 all: filert
 
-EXTRA_CFLAGS =
-EXTRA_LDFLAGS = -lpthread
+filert: $(OBJS)
+	$(CC) $(CFLAGS) -o filert $^ $(LDFLAGS)
 
-filert: filert.o parseconfig.o
-	$(CC) $(CFLAGS) -o filert filert.o parseconfig.o $(EXTRA_LDFLAGS)
-
-filert.o: filert.c
-	$(CC) $(CFLAGS) $(CFLAGS) $(EXTRA_CFLAGS) -c filert.c
-
-parseconfig.o: parseconfig.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c parseconfig.c
+%.o : %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 strip:
 	$(STRIP) filert
+
 clean:
 	rm -f *.o filert

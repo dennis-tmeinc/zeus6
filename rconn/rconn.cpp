@@ -230,16 +230,11 @@ static void conn_start()
 static void conn_stop()
 {
 	conn_state = 0;
-	if (conn_thread_id != 0)
-	{
-		conn_lock();
-		conn_state = 0;
-		pthread_cancel(conn_thread_id);
-		conn_unlock();
-
-		pthread_join(conn_thread_id, NULL);
-		conn_thread_id = NULL;
-	}
+	conn_lock();
+	conn_state = 0;
+	pthread_cancel(conn_thread_id);
+	conn_unlock();
+	pthread_join(conn_thread_id, NULL);
 }
 
 int rconn::connect_server()
@@ -402,12 +397,13 @@ void rconn::cmd_mconn(int argc, char *argv[])
 	}
 
 	// target
-	if (argv[2][0] == '*')
+	const char *target = argv[2] ;
+	if (target[0] == '*')
 	{
-		argv[2] = "127.0.0.1";
+		target = "127.0.0.1";
 	}
 
-	int tsock = net_connect(argv[2], atoi(argv[3]));
+	int tsock = net_connect(target, atoi(argv[3]));
 	if (tsock < 0)
 	{
 		sendLineFormat("close %s\n", argv[1]);
@@ -437,7 +433,7 @@ void rconn::cmd_connect(int argc, char *argv[])
 	}
 
 	// target
-	char *target = argv[2];
+	const char *target = argv[2];
 	if (*target == '*')
 	{
 		target = "127.0.0.1";

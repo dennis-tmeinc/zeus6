@@ -4,33 +4,34 @@
 
 include ../../config
 
-SOURCES=
+SOURCES = getsetup.cpp applysetup.cpp cfgtable.cpp \
+	$(PROJDIR)/dvrsvr/crypt.cpp
 
-EXTHEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h $(PROJDIR)/lib/json/json.h
-EXTSOURCES=$(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/string.cpp $(PROJDIR)/lib/json/json.cpp
+HEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h $(PROJDIR)/lib/json/json.h
 
-HEADERS=
+EXTSRCS = $(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/string.cpp $(PROJDIR)/lib/json/json.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-LDFLAGS= -lstdc++ -lcrypt
+EXTOBJS = $(patsubst %.cpp, %.o, $(EXTSRCS))
+OBJS += $(EXTOBJS)
 
-CFLAGS+= -Wall
+LDFLAGS += -lcrypt
 
 all: getsetup applysetup
 
-getsetup: getsetup.cpp cfgtable.cpp $(EXTSOURCES) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ getsetup.cpp cfgtable.cpp $(EXTSOURCES) $(LDFLAGS)
+getsetup: getsetup.o cfgtable.o $(EXTOBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-applysetup: applysetup.cpp cfgtable.cpp $(EXTSOURCES) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ applysetup.cpp cfgtable.cpp $(EXTSOURCES) ../../dvrsvr/crypt.cpp $(LDFLAGS)
+applysetup: applysetup.o cfgtable.o $(EXTOBJS) $(PROJDIR)/dvrsvr/crypt.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 %.o : %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean:
-	rm -f applysetup
-	rm -f getsetup
+	rm -f applysetup getsetup
+	rm -f $(OBJS)
 	rm -f *.o
 
 

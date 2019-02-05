@@ -68,7 +68,7 @@ void debug_out( char * msg )
 	}
 }
 
-void mcu_debug_out( char * msg, char * head ) 
+void mcu_debug_out( const char * msg, const char * head ) 
 {
 	char lbuf[512] ;
 	char * p = lbuf ;

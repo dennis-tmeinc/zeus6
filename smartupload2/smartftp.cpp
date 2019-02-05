@@ -2467,7 +2467,7 @@ int upload_file(int sd, struct sockaddr_storage *mss_addr,
       }
       sprintf(extension, ".%04d", i + 1);
       strcpy(filename2, filename);
-      strncat(filename2, extension,  sizeof(filename2));
+      strcat(filename2, extension);
       write_resume_info(fullname, i + 1, to_fragment, ffi_path);
       if (send_file(sd, fullname,
 		    uploaded_size, uploaded_size + fragments[i],

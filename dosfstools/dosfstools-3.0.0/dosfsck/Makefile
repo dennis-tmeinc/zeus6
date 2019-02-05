@@ -1,7 +1,7 @@
 # Makefile
 #
 
-OPTFLAGS = -O2 -fomit-frame-pointer -D__arm -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DPATH_MAX=4096
+OPTFLAGS =  -fomit-frame-pointer -D__arm -D_LARGEFILE_SOURCE -D_FILE_OFFSET_BITS=64 -DPATH_MAX=4096
 #WARNFLAGS = -Wall -pedantic -std=c99
 WARNFLAGS = -Wall
 DEBUGFLAGS = 

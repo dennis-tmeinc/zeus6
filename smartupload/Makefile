@@ -3,28 +3,19 @@ include ../config
 
 target: smartftp
 
-#EXTRA_CFLAGS = -I./curl-7.20.1/include
-EXTRA_CFLAGS = -I$(PROJDIR)/lib/curl
+SRCS = smartftp.c upload.c parseconfig.c gforce_peak.c hikfile.c
+OBJS = $(patsubst %.c, %.o, $(SRCS))
+HEADERS = $(patsubst %.c, %.h, $(SRCS))
 
+#EXTRA_CFLAGS = -I./curl-7.20.1/include
+CFLAGS += -I$(PROJDIR)/lib/curl
 LDFLAGS += -lcurl -lrt -lpthread
 
 smartftp: smartftp.o upload.o parseconfig.o gforce_peak.o hikfile.o
 	$(CC) $(CFLAGS) -o smartftp smartftp.o upload.o parseconfig.o gforce_peak.o hikfile.o $(LDFLAGS) -Wl,-rpath=.
 
-smartftp.o: smartftp.c
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c -o smartftp.o smartftp.c
-
-upload.o: upload.c upload.h
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c upload.c
-
-parseconfig.o: parseconfig.c parseconfig.h
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c parseconfig.c
-
-gforce_peak.o: gforce_peak.c gforce_peak.h
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c gforce_peak.c
-
-hikfile.o: hikfile.c hikfile.h
-	$(CC) $(CFLAGS) $(EXTRA_CFLAGS) -c hikfile.c
+%.o : %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c -o $@ $<
 
 strip:
 	$(STRIP) smartftp

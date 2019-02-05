@@ -1,9 +1,7 @@
 
 # Makefile for Eagle32 DVR ioprocess app 
 #
-
-CROSS_COMPILE_PREFIX=~/proj/eagle32/hik_toolchain/bin/arm-linux-
-CC=$(CROSS_COMPILE_PREFIX)gcc
+include ../config
 
 SOURCES=glog.cpp
 
@@ -14,9 +12,8 @@ HEADERS=
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-LDFLAGS= -lpthread -lstdc++ -L../dvrsvr/eagle32 -lsdk -ldadsp ../dvrsvr/eagle32/dsplink.lib
+LDFLAGS += -lpthread -L../dvrsvr/eagle32 -lsdk -ldadsp ../dvrsvr/eagle32/dsplink.lib
 
-CFLAGS=-I../dvrsvr -g -Wall
 
 glog : $(OBJS) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
 	$(CC) $(CFLAGS) -o $@ $(OBJS) $(EXTSOURCES) $(LDFLAGS)
@@ -24,7 +21,7 @@ glog : $(OBJS) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
 
 
 %.o : %.cpp $(HEADERS) $(EXTHEADERS)
-	$(CC) -g -Wall -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o

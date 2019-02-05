@@ -135,11 +135,11 @@ int net_send(int s, void * packet, int psize )
    	return send(s, packet, psize, 0 );
 }
 
-int net_sendall( int s, char * data, int dsize )
+int net_sendall(int s, void *data, int dsize)
 {
 	int w ;
 	while( dsize>0 ) {
-		w = net_send( s, (void *)data, dsize );		
+		w = net_send( s, data, dsize );		
 		if( w > 0 ) {
 			dsize -= w ;
 			data  += w ;

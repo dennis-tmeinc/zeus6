@@ -4,10 +4,7 @@
 
 include ../config
 
-LDFLAGS+= -lstdc++ 
-
 EXTRASOURCES = \
-	$(PROJDIR)/lib/lzmasdk/dec.cpp \
 	$(PROJDIR)/lib/lzmasdk/dec.cpp \
 	$(PROJDIR)/dvrsvr/config.cpp
 EXTRAHEADERS = \
@@ -34,18 +31,18 @@ sfxfiles: sfx mksfx
 all: sfx mksfx sfx86 extractsfx
 
 sfx : sfx.cpp extract.cpp $(DECSOURCES)
-	$(CC) $(CFLAGS) -Os -o $@ sfx.cpp extract.cpp $(DECSOURCES) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ sfx.cpp extract.cpp $(DECSOURCES) $(LDFLAGS)
 	$(STRIP) sfx
 
 sfx86 : sfx.cpp extract.cpp $(DECSOURCES)
-	gcc $(CFLAGS) -o $@ sfx.cpp extract.cpp $(DECSOURCES)
+	gcc $(CFLAGS_PC) -o $@ sfx.cpp extract.cpp $(DECSOURCES) -lstdc++
 	strip sfx86
 
 mksfx : mksfx.cpp $(ENCSOURCES)
-	gcc $(CFLAGS) -o $@ mksfx.cpp $(ENCSOURCES) -lstdc++
+	gcc $(CFLAGS_PC) -o $@ mksfx.cpp $(ENCSOURCES) -lstdc++
 
 extractsfx : extractsfx.cpp extract.cpp $(DECSOURCES)
-	gcc $(CFLAGS) -o $@ -g extractsfx.cpp extract.cpp $(DECSOURCES) -lstdc++
+	gcc $(CFLAGS_PC) -o $@ -g extractsfx.cpp extract.cpp $(DECSOURCES) -lstdc++
 
 clean :
 	rm -f mksfx

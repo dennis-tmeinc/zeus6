@@ -10,9 +10,11 @@ OBJS = $(patsubst %.c, %.o, $(SOURCES))
 
 CFLAGS += -I../dvrsvr
 
-lpc21isp: $(SOURCES) $(HEADERS)
+lpc21isp: $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(LDFLAGS)
-	#cp lpc21isp  $(debug_folder)
+
+%.o : %.c $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o

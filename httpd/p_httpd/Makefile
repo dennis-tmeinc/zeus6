@@ -5,16 +5,16 @@
 include ../../config
 
 CFLAGS += -I$(PROJDIR) 
-LDFLAGS+= -lcrypt -lstdc++
+LDFLAGS+= -lcrypt
 
 # eaglehttpd: eaglehttpd.cpp smallssi.cpp var.cpp access.cpp mod.cpp eaglehttpd.h
-#	$(CC) $(CFLAGS) -O2 -DMOD_SUPPORT -o $@ eaglehttpd.cpp smallssi.cpp var.cpp access.cpp mod.cpp $(LDFLAGS)
+#	$(CC) $(CFLAGS)  -DMOD_SUPPORT -o $@ eaglehttpd.cpp smallssi.cpp var.cpp access.cpp mod.cpp $(LDFLAGS)
 
 eaglehttpd_src=eaglehttpd.cpp smallssi.cpp var.cpp access.cpp mod.cpp 
 eaglehttpd_h=eaglehttpd.h
 
 eaglehttpd: $(eaglehttpd_src) $(eaglehttpd_h) 
-	$(CC) $(CFLAGS) -I . -O2 -DMOD_SUPPORT -o $@  $(eaglehttpd_src) $(LDFLAGS)
+	$(CC) $(CFLAGS) -I .  -DMOD_SUPPORT -o $@  $(eaglehttpd_src) $(LDFLAGS)
 	cp eaglehttpd /home/dennis/nfsroot/
 
 clean :

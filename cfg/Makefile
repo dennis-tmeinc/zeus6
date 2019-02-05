@@ -9,29 +9,24 @@ EXTSOURCES=$(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/string.cpp
 
 HEADERS=
 
-OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
+OBJS  = $(patsubst %.cpp, %.o, $(SOURCES))
+OBJS += $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
-LDFLAGS+= -lstdc++
-CFLAGS+= -I../dvrsvr -g -Wall
+CFLAGS+= -I../dvrsvr
 
 all : cfg cfgpc
 
-cfg : $(SOURCES) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)
+cfg : $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-cfgpc : $(SOURCES) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	gcc -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)
+cfgpc :$(SOURCES) $(EXTSOURCES)
+	gcc -o $@ $^ -lstdc++
 
+#.cpp.o:
 %.o : %.cpp $(HEADERS) $(EXTHEADERS)
-	$(CC) -g -Wall -c $< -o $@
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o
+	rm -f $(OBJS)
 	rm -f cfg cfgpc
-
-
-
-
-
-
-

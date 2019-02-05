@@ -131,7 +131,7 @@ struct dio_mmap *p_dio_mmap = NULL;
 
 char dvrcurdisk[128] = "/var/dvr/dvrcurdisk";
 char dvriomap[256] = "/var/dvr/dvriomap";
-char *pidfile = "/var/dvr/ioprocess.pid";
+const char *pidfile = "/var/dvr/ioprocess.pid";
 int mcupowerdelaytime = 0;
 char mcu_firmware_version[80];
 char hostname[128] = "BUS001";
@@ -324,48 +324,16 @@ unsigned int getruntime()
 	return (unsigned int)(tp.tv_sec - starttime) * 1000 + tp.tv_nsec / 1000000;
 }
 
-// atomically swap value
-int atomic_swap(int *m, int v)
-{
-	register int result;
-	/*
-		result=*m ;
-		*m = v ;
-	*/
-	asm volatile(
-		"swp  %0, %2, [%1]\n\t"
-		: "=r"(result)
-		: "r"(m), "r"(v));
-	return result;
-}
-
-/*
 void dio_lock()
 {
-	int i;
-	for( i=0; i<1000; i++ ) {
-		if( p_dio_mmap->lock>0 ) {
-			usleep(1);
-		}
-		else {
-			break ;
-		}
-	}
-	p_dio_mmap->lock=1;
-}
-*/
-
-void dio_lock()
-{
-	while (atomic_swap(&(p_dio_mmap->lock), 1))
-	{
+	while( __sync_lock_test_and_set( &(p_dio_mmap->lock), 1) ) {
 		sched_yield(); // or sleep(0)
 	}
 }
 
 void dio_unlock()
 {
-	p_dio_mmap->lock = 0;
+	__sync_lock_release( &(p_dio_mmap->lock));
 }
 
 // set onboard rtc
@@ -615,7 +583,7 @@ static unsigned int mic_stat = 0;
 // trigger time of EMG1, EMG2
 static int emg1_time, emg2_time;
 
-static char *battery_status[] = {
+static const char *battery_status[] = {
 	"full",
 	"charging",
 	"discharging",
@@ -990,6 +958,7 @@ int doutput_init()
 int doutput_trigger()
 {
 	mcu_doutputmap = ~mcu_doutputmap;
+	return 0;
 }
 
 int doutput()
@@ -1093,7 +1062,9 @@ int device_power()
 
 		// reset network interface, some how network interface dead after device power changes
 		// setnetwork();
+		return 1;
 	}
+	return 0 ;
 }
 
 #ifdef PWII_APP
@@ -1197,6 +1168,7 @@ int mcu_pwii_output()
 			dvr_log("Dualcam REC LED off.\n");
 		}
 	}
+	return 0;
 }
 
 #endif

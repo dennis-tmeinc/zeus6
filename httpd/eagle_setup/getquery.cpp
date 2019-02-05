@@ -23,6 +23,7 @@ int hextoint(int c)
     return 0;
 }
 
+// decode a single query value (upto & sign)
 int decode(const char * in, char * out, int osize )
 {
     int i ;
@@ -49,8 +50,8 @@ int decode(const char * in, char * out, int osize )
 
 char * getquery( const char * qname )
 {
-    static char qvalue[1024] ;
-    char * query ;
+    static char qvalue[2048] ;
+    const char * query ;
     int l = strlen(qname);
     int x ;
     query = getenv("QUERY_STRING");

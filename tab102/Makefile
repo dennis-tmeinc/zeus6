@@ -7,28 +7,23 @@
 
 include ../config
 
-LDFLAGS := -lpthread -lstdc++
+LDFLAGS += -lpthread
 
-SOURCE = tab102.cpp
-EXTRASOURCE = ../dvrsvr/string.cpp ../dvrsvr/config.cpp
-EXTRAHEADER = ../dvrsvr/genclass.h ../dvrsvr/cfg.h ../ioprocess/diomap.h
+SRCS = tab102.cpp
+SRCS += ../dvrsvr/string.cpp ../dvrsvr/config.cpp
 
-OUT = tab102
-OBJS = tab102.o
+HEADERS = ../dvrsvr/genclass.h ../dvrsvr/cfg.h ../ioprocess/diomap.h
 
-$(OUT): $(SOURCE) $(EXTRASOURCE) $(EXTRAHEADER) 
-	$(CC) $(CFLAGS) $(LDFLAGS) -o $(OUT) $(SOURCE) $(EXTRASOURCE)
+OBJS = $(patsubst %.cpp, %.o, $(SRCS))
 
-%.o: %.cpp
-	$(CC) -c $(CFLAGS) $< -o $@
+tab102 : $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-string.o: ../dvrsvr/string.cpp ../dvrsvr/genclass.h
-	$(CC) -c $(CFLAGS) $< -o $@
-
-config.o: ../dvrsvr/config.cpp ../dvrsvr/cfg.h
+%.o: %.cpp $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@
 
 .PHONY: clean
 
 clean:
 	rm -f $(OUT) *.o *~
+	rm -f $(OBJS)

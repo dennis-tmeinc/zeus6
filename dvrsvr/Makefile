@@ -26,7 +26,7 @@ SOURCES=main.cpp \
 		vri.cpp \
 		fifoswap.cpp \
 		archive.cpp \
-		ipstream.cpp 
+		ipstream.cpp
 
 HEADERS=../cfg.h\
 		dvr.h \
@@ -45,13 +45,11 @@ HEADERS=../cfg.h\
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-CFLAGS += -Os
-
 ifeq ($(EAGLE),zeus8)
-  LDFLAGS += -lpthread -lm -lstdc++ -lipcamerasdk -luuid -L./libzeus8 -leagle -lgm  
-  
+  LDFLAGS += -L./libzeus8 -lipcamerasdk -luuid -leagle -lgm -lpthread -lstdc++
+
 else
-  LDFLAGS += -lpthread -lm -lstdc++ \
+  LDFLAGS += -lstdc++ -lpthread -lm \
 	-L./eagle8851 -leagle8851 -lxmlwrapper -lexpat -lmemmgr -lmsgreader \
 	-lvideocap -lsharedbuffmgr -lframeratectrl -lfreetype \
 	-lmassmemaccess -lh264enc -ljpegenc -lresize \
@@ -60,15 +58,11 @@ else
 
 endif
 
-all : dvrsvr 
-
 # dvrsvr : $(OBJS) $(LIBRARY)
 dvrsvr : $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-md5 : md5.cpp
-	$(CC) $(CFLAGS) -o md5 md5.cpp 
-
+#.cpp.o:
 %.o : %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 

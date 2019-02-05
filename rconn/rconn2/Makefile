@@ -11,8 +11,8 @@ HEADERS=rconn.h adbclient.h channel.h
 EXTSOURCES=../dvrsvr/config.cpp ../net/net.cpp
 EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../net/net.h
 
-CFLAGS+= -Os -DANDROID_CLIENT 
-LDFLAGS= -lstdc++ -lpthread
+CFLAGS += -Os -DANDROID_CLIENT 
+LDFLAGS += -lpthread
 
 rconn : $(SOURCES) $(HEADERS) $(EXTSOURCES) $(EXTHEADERS)
 	$(CC) -g $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)

@@ -2,7 +2,7 @@
 #include "../../cfg.h"
 #include "../../dvrsvr/dvr.h"
 
-// #define NETDBG
+#include "net/net.h"
 
 int net_addr(char *netname, int port, struct sockad *addr);
 
@@ -50,9 +50,7 @@ void dvr_livestream()
         close( streamfd ) ;
         return ;
     }
-
-    while( net_recvok(streamfd, 5000000)>0 ) {
-
+    while( net_rrdy(streamfd, 5000000) ) {
         struct dvr_ans ans ;
         if( net_recv (streamfd, &ans, sizeof(struct dvr_ans))>0 ) {
             if( ans.anscode == ANSSTREAMDATA ) {

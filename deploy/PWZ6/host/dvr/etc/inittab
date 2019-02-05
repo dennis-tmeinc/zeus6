@@ -1,3 +1,0 @@
-ttyS2::sysinit:/etc/init.d/rcS
-::respawn:/sbin/getty -L ttyS2 38400 vt100
-::restart:/sbin/init

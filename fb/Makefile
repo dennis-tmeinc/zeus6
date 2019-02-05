@@ -10,7 +10,7 @@ HEADERS=
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-LDFLAGS= -lstdc++
+LDFLAGS +=
 
 default: libfbdraw.so
 
@@ -25,7 +25,6 @@ fb : $(OBJS) $(SOURCES_C) libfbdraw.so
 libfbdraw.so : fbdraw.c lzmadec.c LzmaDecode.c
 	$(CC) $(CFLAGS) -fPIC -c -Wall fbdraw.c lzmadec.c LzmaDecode.c
 	$(CC) $(CFLAGS) -shared -Wl,-soname,libfbdraw.so -o $@ fbdraw.o lzmadec.o LzmaDecode.o
-	cp libfbdraw.so ../dvrsvr/
 
 clean :
 	rm -f *.o

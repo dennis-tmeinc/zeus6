@@ -4,23 +4,25 @@
 
 include ../config
 
-SOURCES=tdevd.c
+SRCS = tdevd.cpp tdevmount.cpp
+HEADERS = ../dvrsvr/dir.h
 
-OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
+OBJS = $(patsubst %.cpp, %.o, $(SRCS))
 
-LDFLAGS=
+TARGET = tdevd tdevmount
 
-all: tdevd tdevmount
+all: $(TARGET)
 
-tdevd : tdevd.c
+tdevd : tdevd.o
 	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
-#	cp tdevd /home/jianpeng/eagle34/dvrtest/
 
-tdevmount : tdevmount.cpp ../dvrsvr/dir.h
-	$(CC) $(CFLAGS) -o $@ tdevmount.cpp $(LDFLAGS) -lstdc++
-#	cp tdevmount /home/jianpeng/eagle34/dvrtest/
+tdevmount : tdevmount.o
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+
+%.o: %.cpp $(HEADERS)
+	$(CC) -c $(CFLAGS) $< -o $@
 
 clean :
-	rm -f tdevd
-	rm -f tdevmount
+	rm -f $(TARGET)
+	rm -f $(OBJS)
 	rm -f *.o

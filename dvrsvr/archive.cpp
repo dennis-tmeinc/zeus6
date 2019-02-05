@@ -31,8 +31,8 @@ struct archive_t archive_param[3] = {
 	{1, 2, 3, 1, 1}  // copy all file from DISK2 to DISK3, overwrite DISK3
 };
 
-static int archive_run = 0;		 // 0: stopped, 1: running, -1 signal to stop
-pthread_t archive_thread = NULL; // task thread id
+static int archive_run = 0; // 0: stopped, 1: running, -1 signal to stop
+pthread_t archive_thread;   // task thread id
 static int archive_curtask = 0;
 
 static string archive_target_tmpfile;
@@ -262,26 +262,19 @@ static void *archive_thread_proc(void *)
 			usleep(10000);
 	}
 	archive_run = 0;
+	return NULL ;
 }
 
 void archive_start()
 {
 	archive_run = 1;
 	// setup signal
-
-	if (pthread_create(&archive_thread, NULL, archive_thread_proc, (void *)NULL) != 0)
-	{
-		archive_thread = NULL;
-	}
+	pthread_create(&archive_thread, NULL, archive_thread_proc, NULL);
 }
 
 void archive_stop()
 {
 	archive_run = -1;
-	if (archive_thread != (pthread_t)NULL)
-	{
-		// pthread_kill( archive_thread, SIGTERM );
-		pthread_join(archive_thread, NULL);
-		archive_thread = NULL;
-	}
+	// pthread_kill( archive_thread, SIGTERM );
+	pthread_join(archive_thread, NULL);
 }

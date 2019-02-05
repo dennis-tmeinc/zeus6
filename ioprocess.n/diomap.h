@@ -10,17 +10,16 @@
 #include <fcntl.h>
 
 struct dio_mmap {
-    int     usage ;         // how many processes use this structure
-    int     lock ;          // >0 if some process is writing to this structure
-    pid_t   iopid ;         // process id of io process
-    pid_t   dvrpid ;        // process id of dvr server, 0 when dvrsvr is down
-    pid_t   glogpid ;       // process id of glog (gpslog)
+	int usage;		   // how many processes use this structure
+	volatile int lock; // >0 if some process is writing to this structure
+	pid_t iopid;	   // process id of io process
+	pid_t dvrpid;	  // process id of dvr server, 0 when dvrsvr is down
+	pid_t glogpid;	 // process id of glog (gpslog)
 
 	// 266
-	pid_t   tab102pid;
-        
+	pid_t tab102pid;
 
-    int		inputnum ;
+	int		inputnum ;
     unsigned int inputmap ;     // 32 input pin max
     int		outputnum ;
     unsigned int outputmap ;	// 32 output pin max

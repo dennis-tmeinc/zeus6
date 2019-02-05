@@ -7,7 +7,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <math.h>
 #include <sys/time.h>
 #include <time.h>
 #include <sys/types.h>
@@ -785,8 +784,8 @@ double ntp_offset(char *server)
 				double t1, t2, t3, t4;
 				t1 = (double)tv_send.tv_sec + ((double)tv_send.tv_usec) / 1000000.0;
 				t4 = (double)tv_recv.tv_sec + ((double)tv_recv.tv_usec) / 1000000.0;
-				t2 = (double)ntohl(ntpb.Receive_Timestamp) - 2208988800. + (double)ntohl(ntpb.Receive_Timestamp_f) * pow(2., -32);
-				t3 = (double)ntohl(ntpb.Transmit_Timestamp) - 2208988800. + (double)ntohl(ntpb.Transmit_Timestamp_f) * pow(2., -32);
+				t2 = (double)ntohl(ntpb.Receive_Timestamp) - 2208988800. ;
+				t3 = (double)ntohl(ntpb.Transmit_Timestamp) - 2208988800.  ;
 				res = -(t4 - t3 + t1 - t2) / 2;
 			}
 			else

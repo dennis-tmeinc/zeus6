@@ -34,7 +34,6 @@ void local_sendVKRec();
 
 class bodycam
 {
-
   private:
 	string camip; // camera ip or host name
 	int camport;  // camera control port
@@ -93,10 +92,10 @@ class bodycam
 
   protected:
 	int sendCmd(int msg_id);
-	int sendCmd(int msg_id, char *type);
-	int sendCmd(int msg_id, char *type, char *param);
+	int sendCmd(int msg_id, const char *type);
+	int sendCmd(int msg_id, const char *type, const char *param);
 
-	int onrecv();
+	void onrecv();
 	void onKeyInput(char *keyInput);
 
 	void onRecord();

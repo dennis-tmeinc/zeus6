@@ -146,7 +146,7 @@ int checkloginpassword()
     return res ;
 }
 
-void set_cookie( char * cname, char * cvalue )
+void set_cookie( const char * cname, char * cvalue )
 {
     char * ex_header_filename ;
     FILE * ex_header_file ;

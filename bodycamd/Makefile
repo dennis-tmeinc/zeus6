@@ -4,26 +4,32 @@
 
 include ../config
 
-LDFLAGS+= -lstdc++ -lpthread -lcrypt 
-EXTRASOURCES = \
+CFLAGS += -fno-rtti
+LDFLAGS += -lpthread -lcrypt -lm
+
+SOURCES = bodycam.cpp bodycamd.cpp \
 	$(PROJDIR)/lib/cjson/cjson.cpp \
 	$(PROJDIR)/lib/net/net.cpp \
 	$(PROJDIR)/dvrsvr/config.cpp
-EXTRAHEADERS = \
+HEADERS = bodycam.h \
 	$(PROJDIR)/lib/cjson/cjson.h \
 	$(PROJDIR)/lib/net/net.h \
 	$(PROJDIR)/dvrsvr/cfg.h \
 	$(PROJDIR)/dvrsvr/genclass.h \
 	$(PROJDIR)/ioprocess/diomap.h 
 
-SOURCES=bodycamd.cpp bodycam.cpp
-HEADERS=bodycam.h
+OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
 all: bodycamd
 
-bodycamd: $(SOURCES) $(EXTRASOURCES)  $(HEADERS) $(EXTRAHEADERS)
-	$(CC) $(CFLAGS) -O2 -o $@  $(SOURCES) $(EXTRASOURCES) $(LDFLAGS)
+bodycamd: $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+#.cpp.o:
+%.o : %.cpp $(HEADERS)
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm   -f bodycamd
+	rm -f $(OBJS)
 	rm -f *.o

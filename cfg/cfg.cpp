@@ -16,7 +16,7 @@
 #include "../dvrsvr/genclass.h"
 #include "../dvrsvr/cfg.h"
 
-char dvrconfigfile[] = "/etc/dvr/dvr.conf";
+const char dvrconfigfile[] = "/etc/dvr/dvr.conf";
 
 int main(int argc, char *argv[])
 {

@@ -5,8 +5,7 @@
 #    1. copy cfgpc to /deploy/MDVR5100
 #
 
-CROSS_COMPILE_PREFIX=arm-linux-
-CC=$(CROSS_COMPILE_PREFIX)gcc
+include ../config
 
 SOURCES=cfgsync.cpp
 
@@ -16,16 +15,14 @@ EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
 HEADERS=
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
+OBJS += $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
-LDFLAGS= -lstdc++ 
-
-CFLAGS=-I../dvrsvr -g -Wall
+CFLAGS += -I../dvrsvr
 
 all : cfgsync cfgsyncpc
 
-cfgsync : $(SOURCES) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)
-	#cp cfgsync /home/jianpeng/eagle34/dvrtest/
+cfgsync : $(OBJS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
 cfgsyncpc : $(SOURCES) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
 	gcc $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)

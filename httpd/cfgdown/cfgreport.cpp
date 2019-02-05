@@ -443,7 +443,7 @@ int print_cfgreport()
 
 
         // recording_mode
-        static char * recordingmode[5]={
+        static const char * recordingmode[5]={
             "Continue",
             "Trigger by sensor",
             "Trigger by motion",
@@ -453,7 +453,7 @@ int print_cfgreport()
 
         // # resolution, 0:CIF, 1:2CIF, 2:DCIF, 3:4CIF
         // resolution
-        static char * picres[8]={
+        static const char * picres[8]={
             "360x240",
             "720x240",
             "528x320",
@@ -484,7 +484,7 @@ int print_cfgreport()
         printf("Bit rate : %s\n",  (char *)value );
 
         //          # picture quality, 0:lowest, 10:highest
-        static char * picqua[11] = {
+        static const char * picqua[11] = {
             "lowest",
             "lowest",
             "lowest",
@@ -594,7 +594,7 @@ int print_cfgreport()
         ivalue = dvrconfig.getvalueint(section, "show_cameraserial");
         printf( "Display camera serial # : %s\n", ivalue>0? "on" : "off" );
 
-        char * alarmmode[8] = {
+        const char * alarmmode[8] = {
             "OFF",
             "ON",
             "0.5s Flash",

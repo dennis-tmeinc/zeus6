@@ -76,6 +76,26 @@ int net_port( struct sockad *sad )
     return 0;
 }
 
+const char * net_sockname( int s, char * host, int hostlen ) 
+{
+	sockad sad ;
+	sad.len = sizeof( sad.s );
+	if( getsockname(s, &sad.s.saddr, &sad.len)==0 ) {
+		return net_name( &sad, host, hostlen);
+	}
+	return NULL;
+}
+
+const char * net_peername( int s, char * host, int hostlen ) 
+{
+	sockad sad ;
+	sad.len = sizeof( sad.s );
+	if( getpeername(s, &sad.s.saddr, &sad.len)==0 ) {
+		return net_name( &sad, host, hostlen);
+	}
+	return NULL;
+}
+
 int net_connect( const char * host, int port )
 {
 	int s = -1 ;
@@ -250,14 +270,14 @@ int net_send(int s, void * packet, int psize )
    	return send(s, packet, psize, 0 );
 }
 
-int net_sendall( int s, char * data, int dsize )
+int net_sendall( int s, void * data, int dsize )
 {
 	int w ;
 	while( dsize>0 ) {
-		w = net_send( s, (void *)data, dsize );		
+		w = net_send( s, data, dsize );		
 		if( w > 0 ) {
 			dsize -= w ;
-			data  += w ;
+			data = ((char *)data) + w ;
 		}
 		else {
 			net_srdy( s, 1000000 );

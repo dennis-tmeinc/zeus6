@@ -24,19 +24,19 @@ char * trim( char * str );
 
 // http document 
 int document_stat(const char *doc, struct stat * st = NULL, char * docname = NULL );
-FILE * document_open( char * doc );
+FILE * document_open( const char * doc );
 int alt_root();
 
 void parseRequest();
 char * getRequest( const char * req, const char * type = NULL );	// type: "GPC" : Get, Post, Cookie
 
-void http_setheader(char * name, char * cvalue );
+void http_setheader(const char * name, const char * cvalue );
 void http_nocache();
 void http_cacheupdate(char * file);
 void http_setstatus( int status );
-void http_set_contenttype( char * mime_type );
+void http_set_contenttype( const char * mime_type );
 void http_set_contentlength( int length );
-void http_setcookie(char * name, char * value);
+void http_setcookie(const char * name, const char * value);
 
 // return non NULL if buffer allocated and big enough
 char * http_buffer_request( int si );

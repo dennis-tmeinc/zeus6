@@ -4,32 +4,32 @@
 
 include ../config
 
-CFLAGS += -I$(PROJDIR)/lib
+HEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h 
 
-EXTHEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h 
-EXTSOURCES=$(PROJDIR)/dvrsvr/config.cpp 
+SRCS = webtun.cpp
 
-HEADERS=
-SOURCES=webtun.cpp
+EXTSRCS = $(PROJDIR)/dvrsvr/config.cpp 
 
-OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
-CFLAGS+= -I../rconn 
-LDFLAGS+= -lcurl -lstdc++ -lpthread
+OBJS = $(patsubst %.cpp, %.o, $(SRCS))
+OBJS += $(patsubst %.cpp, %.o, $(EXTSRCS))
 
-# CFLAGS+= -DRCMAIN 
-# EXTHEADERS+= ../rconn/channel.h  ../rconn/net.h
-# EXTSOURCES+= ../rconn/rconn.cpp ../rconn/channel.cpp ../rconn/net.cpp
+CFLAGS += -fno-rtti -I$(PROJDIR)/lib -I../rconn
+LDFLAGS+= -lcurl -lpthread
 
-webtun : $(SOURCES) $(EXTSOURCES) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)
-	$(STRIP) $@
+# CFLAGS += -DRCMAIN 
+# HEADERS += ../rconn/channel.h  ../rconn/net.h
+# SRCS += ../rconn/rconn.cpp ../rconn/channel.cpp ../rconn/net.cpp
 
-testcurl : testcurl.cpp $(EXTSOURCES) $(EXTHEADERS)
-	gcc -o $@ testcurl.cpp $(EXTSOURCES) -I. -lcurl -lstdc++
+webtun : $(OBJS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+
+testcurl : testcurl.cpp $(EXTSOURCES)  $(HEADERS)
+	$(CC) $(CFLAGS) -o $@  testcurl.cpp $(EXTSOURCES) $(LDFLAGS)
 	
-%.o : %.cpp $(HEADERS)  $(EXTHEADERS)
+%.o : %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o
-	rm -f webtun
+	rm -f $(OBJS)
+	rm -f webtun testcurl

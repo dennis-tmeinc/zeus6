@@ -43,7 +43,7 @@ static int decode(const char * in, char * out, int osize, char sep )
     return i;
 }
 
-static void parseString( char * query, char * prefix, char sep )
+static void parseString( char * query, const char * prefix, char sep )
 {
 	char * qbuf ;
 	char * eq ;

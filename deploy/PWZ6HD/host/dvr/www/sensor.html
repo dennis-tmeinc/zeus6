@@ -42,7 +42,9 @@
 <tr>
 <td class="col1">Select Power Control  Enable </td>
 <td>
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <input name="sensor_powercontrol" type="checkbox" value="on">
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+<input name="sensor_powercontrol" type="checkbox" value="on">
+<input name="bool_sensor_powercontrol" type="hidden" value="on">
 </td>
 </tr>
 
@@ -53,11 +55,11 @@ document.write(
 "<tr>",
 "<td class=\"col1\">Sensor "+i+"</td>",
 "<td> Name: <input name=\"sensor"+i+"_name\" value=\"Sensor "+i+"\" />",
-" <input name=\"bool_sensor"+i+"_inverted\" type=\"hidden\" value=\"on\" />",
 " <input name=\"sensor"+i+"_inverted\" type=\"radio\" value=\"on\" />",
 " HI ",
 " <input name=\"sensor"+i+"_inverted\" type=\"radio\" value=\"off\" checked=\"checked\" />",
 " LO ",
+" <input name=\"bool_sensor"+i+"_eventmarker\" type=\"hidden\" value=\"on\" />",
 " <input name=\"sensor"+i+"_eventmarker\" type=\"checkbox\" value=\"on\" /> Event Marker",
 "</td>",
 "</tr>"
@@ -74,9 +76,7 @@ document.write(
 </table>
 </form>
 <script type="text/javascript">
-var formdata =
-<!--#include file="sensor_value" -->
-;
+var formdata =<!--#include file="sensor_value" -->;
 JSONinitfield( formdata );
 
 function show_sensor_table()

@@ -3,17 +3,26 @@
 
 include ../config
 
-default: udhcpc
+CFLAGS += -mthumb
+
+default: all
 
 src:
 	tar xvjf udhcp_0.9.8.tar.bz2
 	echo 1 > src
 
 udhcpc: src
-	$(MAKE) -C udhcp udhcpc
+	$(MAKE) -j -C udhcp udhcpc
 	cp udhcp/udhcpc .
-	$(STRIP) udhcpc
+
+udhcpd: src
+	$(MAKE) -j -C udhcp udhcpd
+	cp udhcp/udhcpd .
+
+all: src
+	$(MAKE) -j -C udhcp
+	cp udhcp/udhcpd .
 
 clean:
 	rm -f -r udhcp
-	rm -f udhcpc src
+	rm -f udhcpc udhcpd src

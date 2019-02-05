@@ -146,13 +146,13 @@ int checkloginpassword()
     return res ;
 }
 
-void set_cookie( char * cname, char * cvalue )
+void set_cookie( const char * cname, char * cvalue )
 {
     char * ex_header_filename ;
     FILE * ex_header_file ;
     ex_header_filename=getenv("POST_FILE_EXHEADER");
     if( ex_header_filename ) {
-        ex_header_file=fopen(ex_header_filename, "a");
+        ex_header_file=fopen(ex_header_filename, "a"); 
         if( ex_header_file ) {
             fprintf( ex_header_file, "Set-Cookie: %s=%s\r\n", cname, cvalue );
             fclose( ex_header_file );

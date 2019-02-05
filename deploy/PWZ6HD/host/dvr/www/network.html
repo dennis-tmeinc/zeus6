@@ -87,6 +87,7 @@ $( function() {
 <td class="col1">Enable DHCP Client on Ethernet:</td>
 <td>
 <input name="eth_dhcpc" value="on" type="checkbox" />
+<input name="bool_eth_dhcpc" value="on" type="hidden" />
 </td>
 </tr>
 -->
@@ -153,6 +154,7 @@ $( function() {
 <td class="col1">Enable DHCP on Wireless Interface:</td>
 <td>
 <input name="wifi_dhcp" id="wifi_dhcp" type="checkbox" />
+<input name="bool_wifi_dhcp" value="on" type="hidden" />
 </td>
 </tr>
 
@@ -188,7 +190,7 @@ $( function() {
 
 <tr>
 <td class="col1">Default Gateway:</td>
-<td><input name="gateway_1" /> </td>
+<td><input name="gateway" value="192.168.1.1" /> </td>
 </tr>
 
 <tr>
@@ -199,6 +201,7 @@ $( function() {
 <td class="col1">Mobile App Internet Access:</td>
 <td>
 <input name="internetaccess" value="on" type="checkbox" />
+<input name="bool_internetaccess" value="on" type="hidden" />
 </td>
 </tr>
 

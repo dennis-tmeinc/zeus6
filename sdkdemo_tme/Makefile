@@ -15,9 +15,9 @@ COMPILE_TOOLS= $(TOOL_PREFIX)gcc
 AR 		= $(TOOL_PREFIX)ar
 RANLIB 		= $(TOOL_PREFIX)ranlib
 
-CFLAGS = $(IFLAG) -D_REENTRANT -DDAVINCI -DDEV -O2 -Wall  
+CFLAGS = $(IFLAG) -D_REENTRANT -DDAVINCI -DDEV -Wall  
 
-LDFLAGS= -L ./lib -lpthread -lsdk -ldadsp  ./lib/dsplink.lib 
+LDFLAGS += -L ./lib -lpthread -lsdk -ldadsp  ./lib/dsplink.lib 
 LIB = davinci
 
 all : $(LIB) 

@@ -61,7 +61,7 @@ int main(int argc, char * argv[])
     key_256( appid, buffer );
         
 	// mix app key with keyfile key
-	for(r=0; r<=256; r++) {
+	for(r=0; r<256; r++) {
 		keyfile.key[r]^=buffer[r] ;
 	}
 

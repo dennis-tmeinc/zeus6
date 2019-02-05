@@ -5,32 +5,26 @@
 include ../config
 
 
-SOURCES=glog.cpp
+SOURCES = glog.cpp
+HEADERS =
 
-EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
-EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
-
-HEADERS=
+HEADERS +=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
+SOURCES +=../dvrsvr/config.cpp ../dvrsvr/string.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-LDFLAGS= -lpthread -lstdc++
+CFLAGS += -I../dvrsvr
+LDFLAGS += -lpthread 
 #-L../dvrsvr/eagle32 -lsdk -ldadsp ../dvrsvr/eagle32/dsplink.lib
 
-CFLAGS += -I../dvrsvr
-
-glog : $(OBJS) $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(EXTSOURCES) $(LDFLAGS)
+glog : $(OBJS) 
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 #	cp glog /home/jianpeng/eagle34/dvrtest/
 
-
-%.o : %.cpp $(HEADERS) $(EXTHEADERS)
+%.o : %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o
+	rm -f $(OBJS)
 	rm -f glog
-
-ttest : ttest.c $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ ttest.c $(EXTSOURCES) $(LDFLAGS)
-#	cp ttest /home/jianpeng/eagle34/dvrtest/

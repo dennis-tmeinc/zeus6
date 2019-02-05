@@ -12,16 +12,6 @@
 #ifndef __NET_H__
 #define __NET_H__
 
-struct sockad {
-    union {
-        struct sockaddr saddr ;
-        struct sockaddr_in saddr_in ;
-        struct sockaddr_in6 saddr_in6 ;
-        struct sockaddr_un saddr_un;
-    } s ;
-    socklen_t len;
-};
-
 #ifndef uint8
 #define uint8 uint8_t
 #endif
@@ -34,6 +24,19 @@ struct sockad {
 #define uint32 uint32_t
 #endif
 
+#ifndef __SOCKAD_STRUCT__
+#define __SOCKAD_STRUCT__
+struct sockad {
+    union {
+        struct sockaddr saddr ;
+        struct sockaddr_in saddr_in ;
+        struct sockaddr_in6 saddr_in6 ;
+        struct sockaddr_un saddr_un;
+        char   padding[128];
+    } s ;
+    socklen_t len;
+};
+#endif  // __SOCKAD_STRUCT__
 
 #define SADDR(ad) ((struct sockaddr *)&(ad))
 
@@ -68,6 +71,9 @@ int net_srdy( int s, int usdelay=0);
 int net_addr(struct sockad *addr, const char *netname=NULL, int port=80, int family=AF_INET );
 char * net_name(struct sockad *sad, char * host, int hostlen );
 int net_port( struct sockad *sad );
+const char * net_sockname( int s, char * host, int hostlen ) ;
+const char * net_peername( int s, char * host, int hostlen ) ;
+
 int net_bind(int socket, int port, char * host=NULL);
 int net_connect( const char * host, int port=80 );
 int net_connect_nb( const char * host, int port );
@@ -79,7 +85,7 @@ int net_recvfrom(int s, void * packet, int psize, struct sockad * sad);
 
 int net_send(int s, void * packet, int psize );
 int net_sendx(int s, void * packet, int psize );
-int net_sendall( int s, char * data, int dsize );
+int net_sendall( int s, void * data, int dsize );
 int net_recv(int s, void * packet, int psize );
 int net_recvx(int s, void * packet, int psize );
 

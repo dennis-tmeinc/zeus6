@@ -57,7 +57,7 @@ static	int		http_opos ;
 static	int		http_omark ;	
 static	int		http_chunked ;					//  chunked transfer
 
-static char * strclone( char * s )
+static char * strclone( const char * s )
 {
 	char * v ;
 	int l = strlen( s );
@@ -154,7 +154,7 @@ int document_stat(const char *doc, struct stat * st, char * docname )
 	return 0;
 }
 
-FILE * document_open( char * doc )
+FILE * document_open( const char * doc )
 {
 	char docname[260] ;
 	if( document_stat( doc, NULL, docname )>0 ) {
@@ -395,7 +395,7 @@ void http_buffer_complete()
 }
 
 // only list types might be used by myself.
-static char * mime_type[][2] =
+static const char * mime_type[][2] =
 {
     {"html", "text/html"},
     {"htm",  "text/html"},
@@ -420,7 +420,7 @@ static char * mime_type[][2] =
     {NULL,   "text/html"}
 } ;
 
-char * get_mime_type( char* name )
+const char * get_mime_type( char* name )
 {
     int i;
     char * dot ;
@@ -441,11 +441,11 @@ char * get_mime_type( char* name )
     return "application/octet-stream" ;
 }
 
-char * http_status_msg( int status )
+const char * http_status_msg( int status )
 {
 	static struct {
 		int status ;
-		char * msg ;
+		const char * msg ;
 	} http_msg_table [] =
 	{
 		{ 100, "Continue" },
@@ -467,7 +467,7 @@ char * http_status_msg( int status )
     return "Unknown" ;
 }
 
-void http_setheader(char * name, char * cvalue )
+void http_setheader(const char * name, const char * cvalue )
 {
     char buf[200] ;
     if( http_headerdumped ) 		
@@ -476,7 +476,7 @@ void http_setheader(char * name, char * cvalue )
     setenv( buf, cvalue, 1 );
 }
 
-void http_setheader(char * name, int nvalue )
+void http_setheader(const char * name, int nvalue )
 {
     char buf[200] ;
     if( http_headerdumped ) 		
@@ -485,7 +485,7 @@ void http_setheader(char * name, int nvalue )
     http_setheader(name, buf );
 }
 
-void http_setcookie(char * name, char * value)
+void http_setcookie(const char * name, const char * value)
 {
 	char buf[200] ;
     if( http_headerdumped ) 		// too late?
@@ -616,7 +616,7 @@ void http_setstatus( int status )
 	http_status = status ;
 }
 
-void http_set_contenttype( char * mime_type )
+void http_set_contenttype( const char * mime_type )
 {
    if( mime_type!=NULL ) {
 		http_setheader( "Content-Type" , mime_type );
@@ -846,9 +846,9 @@ static const char * getpartenv( int partno, const char * key )
 int http_inputmultipart( int content_length )
 {
     FILE * postfile ;
-    char * boundary ;
-    char * p ;
-    char * p2 ;
+    const char * boundary ;
+    const char * p ;
+    const char * p2 ;
     char * linebuf ;
     int  i ;
     int  d ;

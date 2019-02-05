@@ -11,9 +11,6 @@ HEADERS=
 
 OBJS = $(patsubst %.c, %.o, $(SOURCES))
 
-LDFLAGS=
-
-
 nfile:  $(SOURCES)
 	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(LDFLAGS)
 #	cp nfile /home/jianpeng/eagle34/dvrtest/

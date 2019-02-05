@@ -5,10 +5,7 @@
 # $^: Space-delimited list of all the dependencies in a rule
 # $?: same as $^ but only those newer than the target
 
-CROSS_COMPILE_PREFIX=~/proj/eagle32/hik_toolchain/bin/arm-linux-
-CC := $(CROSS_COMPILE_PREFIX)gcc
-CFLAGS := -Wall -O2
-LDFLAGS := -lpthread -lstdc++
+LDFLAGS += -lpthread 
 
 OUT = glog2 
 OBJS = glog2.o string.o config.o # add here

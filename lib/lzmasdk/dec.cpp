@@ -4,10 +4,11 @@
 
 #include "LzmaDec.h"
 
-static void *SzAlloc(void *p, size_t size) { p = p; return malloc(size); }
-static void SzFree(void *p, void *address) { p = p; free(address); }
+static void *SzAlloc(ISzAllocPtr p, size_t size){ (void)p; return malloc(size); }
+static void SzFree(ISzAllocPtr p, void *address){ (void)p; free(address); }
 static ISzAlloc g_Alloc = { SzAlloc, SzFree } ;
 
+// single call decode
 /*
 int lzmadec( unsigned char * lzmabuf, int lzmasize, unsigned char * lzmaoutbuf, int lzmaoutsize )
 {

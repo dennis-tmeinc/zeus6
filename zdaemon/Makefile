@@ -4,24 +4,18 @@
 
 include ../config
 
-SOURCES=zdaemon.cpp
+SRCS = zdaemon.cpp
+HEADERS = 
 
-HEADERS=
+OBJS = $(patsubst %.cpp, %.o, $(SRCS))
 
-EXTHEADERS= 
-EXTSOURCES= 
+zdaemon : zdaemon.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
-CFLAGS+= -I. 
-LDFLAGS= -lstdc++ 
-
-zdaemon : $(SOURCES) $(EXTSOURCES) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)
-	$(STRIP) $@
-
-%.o : %.cpp $(HEADERS)  $(EXTHEADERS)
+%.o : %.cpp $(HEADERS)  
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o
+	rm -f $(OBJS)
 	rm -f zdaemon

@@ -6,15 +6,10 @@ include ../config
 
 SOURCES=usbgenkey.c crypt.c
 
-HEADERS=
-
-OBJS =
-LDFLAGS=
-
 all: usbgenkey usbcheck
 
 usbgenkey : usbgenkey.c crypt.c
-	gcc $(CFLAGS) -o $@ usbgenkey.c crypt.c $(LDFLAGS)
+	gcc $(CFLAGS_PC) -o $@ usbgenkey.c crypt.c
 #	cp usbgenkey /home/jianpeng/eagle34/dvrtest/
 
 usbcheck : usbcheck.c crypt.c

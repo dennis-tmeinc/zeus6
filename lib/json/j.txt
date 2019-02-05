@@ -1,12 +1,21 @@
+
+#DPL
+# Content-Type: JSON
+# Touch Down Center 3.7.37
 {
-    30.12500000002000001000000000000000000000000000000000000000000000000,
+{"server":{"protocol":"http","port":"80","host":"localhost","app":"\/tdweb\/istream.php","url":"http:\/\/localhost:80\/tdweb\/istream.php","sessionidname":"touchdownid","touchdownid":"c2a14d0446c128dc0ca5aefd5c0f7a14"},"info":{"name":"BUS21","encoder":"266","camera_number":8,"support_playback":1,"support_live":0,"playmode":"playback","playtime":"2019-01-07 06:36:55","cameras":{"available":8,"channels":[1,2,3,4,5,6,7,8]},"camera1":"camera-1","camera2":"camera-2","camera3":"camera-3","camera4":"camera-4","camera5":"camera-5","camera6":"camera-6","camera7":"camera-7","camera8":"camera-8"}}
+,
+{
+    30.125000000020000010000000000000000000000000000000000000000000000003,
     34294967296,
-    "\u7027\u706d\u444yybb12xafsdfasdfasdf asdf asdf asdf asdf \x \t \b \r \u000a aaa",
+    "\u7027\u706d\u4445yybb12xafsdfasdfasdf asdf asdf asdf asdf \x \t \b \r \u000a aaa",
     null,
     true,
     false,
     {},
-    {null,},
-    "aaaray":[1,2,3,4],
+    {null},
+    "aa-aray":[1,2,3,4],
     "abc"
+}
+
 }

@@ -4,24 +4,26 @@ PROJDIR=/home/dennis/proj/dvr/zeus6
 proj=PWZ6HD
 EAGLE=zeus8
 
-export PROJDIR proj EAGLE
-
 # cross compile toolchain for zeus8 board
 
-SYSROOT=$(PROJDIR)/../toolchain/zeus8/toolchain_gnueabi-4.4.0_ARMv5TE
-CROSS_COMPILE_PREFIX=$(SYSROOT)/usr/bin/arm-unknown-linux-uclibcgnueabi-
+#TOOLCHAIN=$(PROJDIR)/../toolchain/zeus8/toolchain_gnueabi-4.4.0_ARMv5TE/usr
+TOOLCHAIN=/home/dennis/opt/toolchain
+CROSS_COMPILE_PREFIX=$(TOOLCHAIN)/bin/arm-linux-
 
 export CROSS_COMPILE=$(CROSS_COMPILE_PREFIX)
 export CC=$(CROSS_COMPILE_PREFIX)gcc
-export CXX=$(CROSS_COMPILE_PREFIX)g++
-export GPP=$(CROSS_COMPILE_PREFIX)g++
 export STRIP=$(CROSS_COMPILE_PREFIX)strip
-export LD_LIBRARY_PATH=$(SYSROOT)/usr/lib
+
+export LD_LIBRARY_PATH=$(TOOLCHAIN)/lib
 
 # dvr specific options
-CFLAGS += -Wno-write-strings -I$(PROJDIR) -I$(PROJDIR)/lib
-LDFLAGS += -L$(PROJDIR)/deploy/$(proj)/host/dvr/lib
+CFLAGS = -march=armv5te -mthumb -Os -fno-exceptions -I$(PROJDIR) -I$(PROJDIR)/lib 
+LDFLAGS = -L$(PROJDIR)/deploy/$(proj)/host/dvr/lib -L$(PROJDIR)/lib -lfixc++
+
+export CFLAGS
+
+# CFLAGS for PC
+CFLAGS_PC = -I$(PROJDIR) -I$(PROJDIR)/lib 
 
 # debugging folder
 debug_folder=/home/dennis/nfsroot/eagletest
-

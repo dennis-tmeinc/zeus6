@@ -66,7 +66,7 @@ sfxrun.dep sfxrun
 ./dvr/adminpasswd
 ./dvr/dvrsvr.conf
 
-# www binary
+# http binary
 ./dvr/eaglehttpd
 
 # www files (include all subdirs)

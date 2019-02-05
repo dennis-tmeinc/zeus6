@@ -15,51 +15,60 @@
 
 int main()
 {
-    int i ;
-    int d ;
-    struct chunkheader {
-        unsigned int tag ;
-        int filenamesize ;
-        int filesize ;
-        int filemode ;
-    } chd ;
-    char * cfgfilename ;
-    FILE * cfgfile ;
-    FILE * fp ;
-    char filename[256] ;
+    int i;
+    int d;
+    struct chunkheader
+    {
+        unsigned int tag;
+        int filenamesize;
+        int filesize;
+        int filemode;
+    } chd;
+    char *cfgfilename;
+    FILE *cfgfile;
+    FILE *fp;
+    char filename[256];
     int nvfile = 0;
-    cfgfilename = getenv( "POST_FILE_cfgupload_file" );
-    if( cfgfilename==NULL )
-        goto upcfgreport ;
-    cfgfile = fopen( cfgfilename, "r" ) ;
-    if( cfgfile ) {
-        while( fread(&chd, 1, sizeof(chd), cfgfile )==sizeof(chd) ) {
-            if( chd.tag==CFGTAG && chd.filenamesize<255 ) {
-                fread( filename, 1, chd.filenamesize, cfgfile );
-                filename[chd.filenamesize]=0 ;
-                fp = fopen(filename,"w");
-                if( fp ) {
-                    for( i=0; i<chd.filesize; i++ ) {
-                        d=fgetc(cfgfile);
-                        if( d==EOF ) break;
+    cfgfilename = getenv("POST_FILE_cfgupload_file");
+    if (cfgfilename == NULL)
+        goto upcfgreport;
+    cfgfile = fopen(cfgfilename, "r");
+    if (cfgfile)
+    {
+        while (fread(&chd, 1, sizeof(chd), cfgfile) == sizeof(chd))
+        {
+            if (chd.tag == CFGTAG && chd.filenamesize < 255)
+            {
+                fread(filename, 1, chd.filenamesize, cfgfile);
+                filename[chd.filenamesize] = 0;
+                fp = fopen(filename, "w");
+                if (fp)
+                {
+                    for (i = 0; i < chd.filesize; i++)
+                    {
+                        d = fgetc(cfgfile);
+                        if (d == EOF)
+                            break;
                         fputc(d, fp);
                     }
-                    fclose( fp );
+                    fclose(fp);
                     nvfile++;
                 }
             }
-            else 
+            else
                 break;
         }
-        fclose( cfgfile );
+        fclose(cfgfile);
     }
 
-upcfgreport:    
-    if( nvfile>0 ) {
-        printf("Configuration uploaded!" );
+upcfgreport:
+    if (nvfile > 0)
+    {
+        printf("Configuration uploaded!");
     }
-    else {
-        printf("Configuration uploading failed!" );
+    else
+    {
+        printf("Configuration uploading failed!");
     }
     return 0;
 }

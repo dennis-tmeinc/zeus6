@@ -40,59 +40,6 @@ void dvrsvr_up()
     }
 }
 
-char buf[32000] ;
-
-char * getsetvalue( char * name )
-{
-    static char v[500] ;
-    char * h ;
-    char * needle ;
-    int l = strlen(name);
-    int i ;
-    h = buf ;
-    while( (needle = strstr( h, name ))!=NULL ) {
-        h=needle+l+1 ;
-        if( *(needle-1)=='\"' && needle[l]=='\"' ) {
-            needle=h ;
-            // skip white space
-            while( *needle<=' ' ) {
-                needle++;
-            }
-
-            if( *needle==':' && *(needle+1)=='\"' ) {
-                needle+=2;
-
-                for( l=0; l<500; l++ ) {
-                    char c = needle[l];
-                    if( c=='\"' || c=='}' || c==0 ) {
-                        break;
-                    }
-                    else {
-                        v[l]=c ;
-                    }
-                }
-
-                // trim string
-                while( l>0 ) {
-                    if( v[l-1]<=' ' )  {
-                        l--;
-                    }
-                    else {
-                        break;
-                    }
-                }
-                v[l]=0;
-                for( i=0; i<l; i++ ) {
-                    if( v[i]>' ' )
-                        break;
-                }
-                return &v[i] ;
-            }
-        }
-    }
-    return NULL ;
-}
-
 // generate a random charactor in [a-zA-Z0-9./]
 int randomchar()
 {
@@ -147,7 +94,7 @@ void fileenckey( char * password, char * c64key )
     bin2c64(filekey256, 256, c64key);               // convert to c64
 }
 
-void run( char * cmd, char * argu, int background )
+void run( const char * cmd, char * argu, int background )
 {
     pid_t child = fork();
     if( child==0 ) {        // child process
@@ -175,54 +122,20 @@ char * getbroadcastaddr(char* ipaddr,char* ipmask)
     return inet_ntoa(broadcast);
 }
 
-/*
-static char * rtrim( char * s )
-{
-    while( *s > 1 && *s <= ' ' ) {
-        s++ ;
-    }
-    return s ;
-}
+#ifndef __STRUCT_CFG_TABLE__
+#define __STRUCT_CFG_TABLE__
+struct cfg_table {
+    const char * section ;
+    const char * key ;
+    const char * jfield ;
+    int   valuetype ;       //0: string, 1: integer, 2: float, 3, "on" if trun, 4: on if false
+};
+#endif  // __STRUCT_CFG_TABLE__
 
-static char * ltrim( char * s )
-{
-    int l = strlen(s);
-    while( l>0 ) {
-        if( s[l-1] <= ' ' )
-            l-- ;
-        else
-            break ;
-    }
-    s[l] = 0 ;
-    return s ;
-}
-
-static char * readfile( char * filename )
-{
-    static char sbuf[1024] ;
-    FILE * f ;
-    f = fopen( filename, "r" );
-    if( f ) {
-        int r=fread( sbuf, 1, sizeof(sbuf)-1, f );
-        fclose( f );
-        if( r>0 ) {
-            sbuf[r]=0 ;
-            return ltrim(rtrim(sbuf)) ;
-        }
-    }
-    return NULL ;
-}
-
-static void savefile( char * filename, char * v )
-{
-    FILE * f ;
-    f = fopen( filename, "w" );
-    if( f ) {
-        fputs( v, f ) ;
-        fclose( f );
-    }
-}
-*/
+extern cfg_table system_table[] ;
+extern cfg_table camera_table[] ;
+extern cfg_table bodycamera_table[];
+extern cfg_table network_table[];
 
 // set json item to configure file
 void set_json_item(
@@ -240,27 +153,13 @@ void set_json_item(
     {
         if (item == NULL)
             return;
-        else if (item->isString())
-        {
-            cfg.setvalue(section, key, item->getString());
-        }
-        else if (item->isNumber())
-        {
-            cfg.setvalue(section, key, v.printf("%lg", item->getNumber()));
-        }
+        cfg.setvalue(section, key, item->getString());
     }
     else if (valuetype == 1) // integer number
     {
         if (item == NULL)
             return;
-        else if (item->isNumber())
-        {
-            cfg.setvalueint(section, key, item->getNumber());
-        }
-        else if (item->isString())
-        {
-            cfg.setvalue(section, key, item->getString());
-        }
+        cfg.setvalueint(section, key, item->getNumber());
     }
     else if (valuetype == 2) // generic (double) number
     {
@@ -277,44 +176,42 @@ void set_json_item(
     }
     else if (valuetype == 3) // "on"
     {
-        bool_item = jobj.getItem(v.printf("bool_%s", json_name));
-        if (bool_item)
-        {
-            cfg.setvalueint(section, key, item == NULL ? 0 : 1);
+        if( item != NULL ) {
+            cfg.setvalueint(section, key, 1);
+        }
+        else {
+            bool_item = jobj.getItem(v.printf("bool_%s", json_name));
+            if (bool_item)
+            {
+                cfg.setvalueint(section, key, 0);
+            }
         }
     }
     else if (valuetype == 4) // reversed "on"
     {
-        bool_item = jobj.getItem(v.printf("bool_%s", json_name));
-        if (bool_item)
-        {
-            cfg.setvalueint(section, key, item == NULL ? 1 : 0);
+        if( item != NULL ) {
+            cfg.setvalueint(section, key, 0);
+        }
+        else {
+            bool_item = jobj.getItem(v.printf("bool_%s", json_name));
+            if (bool_item)
+            {
+                cfg.setvalueint(section, key, 1);
+            }
         }
     }
 }
-
-struct cfg_table
-{
-    const char *section;
-    const char *key;
-    const char *jfield;
-    int valuetype; //0: string, 1: integer, 2: float, 3, "on" if trun, 4: on if false
-};
-
-extern cfg_table system_table[] ;
-extern cfg_table camera_table[] ;
 
 int main()
 {
     int i, r;
     int ivalue ;
-    char * v ;
+    string value ;
     struct cfg_table * ctable ;
     FILE * fvalue ;
     char section[80] ;
     int  sensor_number = 31;
     config dvrconfig(CFG_FILE);
-    string value ;
 
     // suspend dvrsvr
     dvrsvr_down();
@@ -346,32 +243,6 @@ int main()
         if( it && it->isString() && strcmp(it->getString(), "*****" )!=0  ) {
             setadminpassword(it->getString());    
         }
-
-        // file encryptions
-        /*
-
-        v = getsetvalue ("en_file_encryption");
-        dvrconfig.setvalueint( "system", "fileencrypt", v?1:0 );
-
-        if( v ) {
-            v = getsetvalue ("en_use_default_password");
-            if( v ) {
-                // use default mf key
-                char * mfkey = readfile( "/davinci/dvr/mfkey" );
-                dvrconfig.setvalue( "system", "filepassword", mfkey );
-            }
-            else {
-                // use user set password
-                v = getsetvalue ("file_password");
-                if( strcmp( v, "********" ) != 0 ) {
-                    // do set password
-                    char filec64key[400] ;
-                    fileenckey( v, filec64key );
-                    dvrconfig.setvalue("system", "filepassword", filec64key);   // save password to config file
-                }
-            }
-        }
-        */
 #endif  // PWII_APP
         
         delete j_system ;
@@ -381,63 +252,35 @@ int main()
     // moved sensor setting ahead of camera setting , because camera setting use "sensor_number"
 
     // write sensor_value
-    fvalue = fopen( "sensor_value", "r");
-    if( fvalue ) {
-        r=fread( buf, 1, sizeof(buf), fvalue );
-        buf[r]=0;
-        fclose(fvalue);
+    json * j_sensor = new json(JSON_Object);
+    j_sensor->loadFile("sensor_value");
 
-        v = getsetvalue ("sensor_number");
-        if( v ) {
-            sscanf(v, "%d", &sensor_number);
-            if( sensor_number<0 || sensor_number>32 ) {
-                sensor_number=6 ;
-            }
-            dvrconfig.setvalueint( "io", "inputnum", sensor_number );
-        }
-
-        for( i=1; i<=sensor_number; i++ ) {
-            char sensorkey[30] ;
-            sprintf( section, "sensor%d", i );
-            sprintf( sensorkey,   "sensor%d_name", i );
-            v = getsetvalue(sensorkey);
-            if( v ) {
-                dvrconfig.setvalue(section, "name", v );
-            }
-
-            sprintf( sensorkey, "sensor%d_inverted", i );
-            v = getsetvalue(sensorkey);
-            if( v && strcmp( v, "on" )==0 ) {
-                dvrconfig.setvalueint(section, "inverted", 1 );
-            }
-            else {
-                dvrconfig.setvalueint(section, "inverted", 0 );
-            }
-
-            sprintf( sensorkey, "sensor%d_eventmarker", i );
-            v = getsetvalue(sensorkey);
-            if( v && strcmp( v, "on" )==0 ) {
-                dvrconfig.setvalueint(section, "eventmarker", 1 );
-            }
-            else {
-                dvrconfig.setvalueint(section, "eventmarker", 0 );
-            }
-
-        }
-
-#if defined(TVS_APP) || defined(PWII_APP)
-        v = getsetvalue("sensor_powercontrol");
-        if (v)
-        {
-            dvrconfig.setvalueint("io", "sensor_powercontrol", 1);
-        }
-        else
-        {
-            dvrconfig.setvalueint("io", "sensor_powercontrol", 0);
-        }
-#endif
-
+    sensor_number=6 ;
+    json * j_sn = j_sensor->getItem("sensor_number");
+    if( j_sn ) {
+        sensor_number=j_sn->getInt();
     }
+    dvrconfig.setvalueint( "io", "inputnum", sensor_number );
+    set_json_item( dvrconfig, *j_sensor, "io","sensor_powercontrol", "sensor_powercontrol", 3 );
+
+    for( i=1; i<=sensor_number; i++ ) {
+        sprintf( section, "sensor%d", i );
+
+        // write sensor name
+        set_json_item( dvrconfig, *j_sensor, section, "name", value.printf("%s_name", section), 0 );
+
+        // inverted value
+        j_sn = j_sensor->getItem(value.printf("%s_inverted", section));
+        if( j_sn && strcmp(j_sn->getString(),"on")==0 ) {
+            dvrconfig.setvalueint(section, "inverted", 1 );
+        }
+        else {
+            dvrconfig.setvalueint(section, "inverted", 0 );
+        }
+        // event marker
+        set_json_item( dvrconfig, *j_sensor, section, "eventmarker", value.printf("%s_eventmarker", section), 3 );
+    }
+    delete j_sensor ;
 
     // this is new camera nubmer settings
     int camera_number = dvrconfig.getvalueint("system", "totalcamera");
@@ -509,201 +352,44 @@ int main()
 #ifdef APP_PWZ8
     // bodycam values
     camera_number = dvrconfig.getvalueint("system", "totalbodycam");
-
     for( i=1; i<=camera_number; i++ ) {
-        sprintf(section, "bodycam_value_%d", i);
-        fvalue=fopen(section, "r");
-        if(fvalue){
-            r=fread( buf, 1, sizeof(buf), fvalue );
-            buf[r]=0;
-            fclose( fvalue );
-            sprintf( section, "bodycam%d", i);
-            // bodycam enable
-            v = getsetvalue( "bcam_enable" );
-            if( v!=NULL && strcasecmp(v,"on")==0 ) {
-                dvrconfig.setvalueint(section,"enable",1);
-            }
-            else {
-                dvrconfig.setvalueint(section,"enable",0);
-            }
+        json * j_bdcam = new json(JSON_Object);
+        j_bdcam->loadFile(value.printf("bodycam_value_%d", i));
 
-            // bodycam ip
-            v = getsetvalue( "bcam_ip" );
-            if( v==NULL )
-                v=(char *)"" ;
-            dvrconfig.setvalue(section,"ip",v);
-
-            // bodycam trigger
-            v = getsetvalue( "bcam_trigger" );
-            if( v!=NULL && strcasecmp(v,"on")==0 ) {
-                dvrconfig.setvalueint(section,"bodycam_trigger",1);
-            }
-            else {
-                dvrconfig.setvalueint(section,"bodycam_trigger",0);
-            }
-
-            // bodycam trigger by DVR
-            v = getsetvalue( "bcam_dvrtrigger" );
-            if( v!=NULL && strcasecmp(v,"on")==0 ) {
-                dvrconfig.setvalueint(section,"dvr_trigger",1);
-            }
-            else {
-                dvrconfig.setvalueint(section,"dvr_trigger",0);
-            }
+        sprintf( section, "bodycam%d", i);
+        ctable = bodycamera_table ;
+        while( ctable->jfield !=NULL ) {
+            set_json_item( dvrconfig, *j_bdcam, ctable->section==NULL?section:ctable->section, ctable->key, ctable->jfield, ctable->valuetype );
+            ctable ++ ;
         }
+        delete j_bdcam ;
     }
 #endif
 
     // write network_value
-    fvalue = fopen( "network_value", "r");
-    if( fvalue ) {
-        r=fread( buf, 1, sizeof(buf), fvalue );
-        buf[r]=0;
-        fclose(fvalue);
+    json * j_net = new json(JSON_Object);
+    j_net->loadFile( "network_value");
 
-        string ip ;
-        string mask ;
-
-        // eth_ip
-        v=getsetvalue("eth_ip");
-        if( v ) {
-            ip = v;
-        }
-        else {
-            ip = "192.168.1.100" ;
-        }
-        dvrconfig.setvalue( "network", "eth_ip", ip );
-
-        // eth_mask
-        v=getsetvalue("eth_mask");
-        if( v ) {
-            mask = v;
-        }
-        else {
-            mask = "255.255.255.0" ;
-        }
-        dvrconfig.setvalue( "network", "eth_mask", mask );
-
-        //eth broadcast
-        dvrconfig.setvalue( "network", "eth_broadcast", getbroadcastaddr( ip, mask ) );
-
-        // dhcp client on eth0
-        v=getsetvalue("eth_dhcp");
-        if( v!=NULL && strcmp(v,"on")==0 ) {
-            dvrconfig.setvalueint( "network", "eth_dhcp", 1 );
-        }
-        else {
-            dvrconfig.setvalueint( "network", "eth_dhcp", 0 );
-        }
-
-        // wifi ip
-        v=getsetvalue("wifi_ip");
-        if( v ) {
-            ip = v;
-        }
-        else {
-            ip = "192.168.3.100" ;
-        }
-        dvrconfig.setvalue( "network", "wifi_ip", ip );
-
-        // wifi_mask
-        v=getsetvalue("wifi_mask");
-        if( v ) {
-            mask = v;
-        }
-        else {
-            mask = "255.255.255.0" ;
-        }
-        dvrconfig.setvalue( "network", "wifi_mask", mask );
-
-        //wifi broadcast
-        dvrconfig.setvalue( "network", "wifi_broadcast", getbroadcastaddr( ip, mask ) );
-
-        // dhcp client on wlan0
-        v=getsetvalue("wifi_dhcp");
-        if( v!=NULL && strcmp(v,"on")==0 ) {
-            dvrconfig.setvalueint( "network", "wifi_dhcp", 1 );
-        }
-        else {
-            dvrconfig.setvalueint( "network", "wifi_dhcp", 0 );
-        }
-
-        // set wifi on AP mode (for body camera feature )
-        v=getsetvalue("wifi_mode");
-        if( v!=NULL )
-            dvrconfig.setvalue( "network", "wifi_mode", v );
-
-        // ap ssid
-        v=getsetvalue("ap_ssid");
-        if( v ) {
-            dvrconfig.setvalue( "network", "ap_ssid", v );
-        }
-
-        // ap key
-        v=getsetvalue("ap_key");
-        if( v ) {
-            dvrconfig.setvalue( "network", "ap_key", v );
-        }
-
-        // ap channel
-        v=getsetvalue("ap_channel");
-        if( v ) {
-            dvrconfig.setvalue( "network", "ap_channel", v );
-        }
-
-        // gateway
-        v=getsetvalue("gateway_1");
-        if( v ) {
-            dvrconfig.setvalue( "network", "gateway", v );
-        }
-        else {
-            dvrconfig.setvalue( "network", "gateway", "192.168.1.1" );
-        }
-
-        // wifi authentication/encription
-        v=getsetvalue("wifi_enc");
-        if( v ) {
-            int value = 0 ;
-            sscanf(v, "%d", &value);
-            if( value<0 || value>8 ) {
-                value=0 ;
-            }
-            dvrconfig.setvalueint( "network", "wifi_enc", value );
-        }
-
-        // wifi_essid
-        v = getsetvalue("wifi_essid");
-        if( v ) {
-            dvrconfig.setvalue( "network", "wifi_essid", v);
-        }
-
-        // wifi_key
-        v = getsetvalue("wifi_key");
-        if( v ) {
-            dvrconfig.setvalue( "network", "wifi_key", v);
-        }
-
-        v = getsetvalue("smartserver");
-        if( v!=NULL ) {
-            dvrconfig.setvalue( "network", "smartserver", v);
-        }
-
-        // internet access
-        v = getsetvalue("internetaccess");
-
-        if( v!=NULL ) {
-            dvrconfig.setvalueint( "system", "nointernetaccess", 0);
-        }
-        else {
-            dvrconfig.setvalueint( "system", "nointernetaccess", 1);
-        }
-        // internet key
-        v = getsetvalue("internetkey");
-        if( v ) {
-            dvrconfig.setvalue( "system", "internetkey", v);
-        }
-
+    ctable = network_table ;
+    while( ctable->jfield !=NULL ) {
+        set_json_item( dvrconfig, *j_net, ctable->section, ctable->key, ctable->jfield, ctable->valuetype );
+        ctable ++ ;
     }
+
+    string ip ;
+    string mask ;
+    //eth broadcast
+    ip = dvrconfig.getvalue( "network", "eth_ip" );
+    mask = dvrconfig.getvalue( "network", "eth_mask" );
+    dvrconfig.setvalue( "network", "eth_broadcast", getbroadcastaddr( ip, mask ) );
+
+    //wifi broadcast
+    ip = dvrconfig.getvalue( "network", "wifi_ip" );
+    mask = dvrconfig.getvalue( "network", "wifi_mask" );
+    dvrconfig.setvalue( "network", "wifi_broadcast", getbroadcastaddr( ip, mask ) );
+
+    delete j_net ;
+    // end of network_value
 
     // save setting
     sync();

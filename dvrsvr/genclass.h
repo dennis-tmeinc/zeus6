@@ -548,7 +548,7 @@ class string {
         }
 };
 
-int savetxtfile(char *filename, array <string> & strlist );
-int readtxtfile(char *filename, array <string> & strlist);
+int savetxtfile(const char *filename, array <string> & strlist );
+int readtxtfile(const char *filename, array <string> & strlist);
 
 #endif		// __genclass_h__

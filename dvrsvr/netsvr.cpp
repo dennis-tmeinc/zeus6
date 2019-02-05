@@ -34,7 +34,7 @@ void net_trigger()
 	// this make select() on net_thread return right away
 	net_lock();
 	if( net_fifos == 0 )
-		sendto(msgfd, "T", 1, 0, &loopback.addr, loopback.addrlen);
+		sendto(msgfd, "T", 1, 0, &loopback.s.saddr, loopback.len);
 	net_unlock();
 }
 
@@ -101,13 +101,13 @@ void net_message()
     unsigned int req ;
     msgbuf[0] = msgbuf[1] = 0 ;
 	
-    from.addrlen = sizeof(from) - sizeof(from.addrlen);
-    msgsize = recvfrom(msgfd, &msgbuf, sizeof(msgbuf), 0, &(from.addr), &(from.addrlen));
+    from.len = sizeof( from.s );
+    msgsize = recvfrom(msgfd, &msgbuf, sizeof(msgbuf), 0, &(from.s.saddr), &(from.len));
 	if ( msgsize >= (int)sizeof(req) ) {
 		req = msgbuf[0] ;
 		if (req == REQDVREX) {
 			req = DVRSVREX;
-			sendto(msgfd, &req, sizeof(req), 0, &(from.addr), from.addrlen);
+			sendto(msgfd, &req, sizeof(req), 0, &(from.s.saddr), from.len);
 		} 
 		else if (req == REQSHUTDOWN) {
 			app_state = APPQUIT;
@@ -124,10 +124,10 @@ void net_message()
 			else {
 				dts.tz[0]=0 ;
 			}
-			sendto(msgfd, &dts, sizeof(dts), 0, &(from.addr), from.addrlen);
+			sendto(msgfd, &dts, sizeof(dts), 0, &(from.s.saddr), from.len);
 		}
-		else if( req == 'OHCE' ) {		// echo
-			sendto(msgfd, &req, sizeof(req), 0, &(from.addr), from.addrlen);
+		else if( req == 0x4f484345 ) {		// 'OHCE' , for echo 
+			sendto(msgfd, &req, sizeof(req), 0, &(from.s.saddr), from.len);
 		}
 		else if( req == DVRKEYINPUT ) {	// pw key input , for bodycam support
 			event_key( msgbuf[1]&0xff, msgbuf[1]&0xffffff00); 	// keyboard/keypad event
@@ -150,28 +150,27 @@ int net_addr(const char *netname, int port, struct sockad *addr)
         dvr_log("Error:netsvr:net_addr!");
         return -1;
     }
-    addr->addrlen = res->ai_addrlen;
-    memcpy(&addr->addr, res->ai_addr, res->ai_addrlen);
+    addr->len = res->ai_addrlen;
+    memcpy(&addr->s.saddr, res->ai_addr, res->ai_addrlen);
     freeaddrinfo(res);
     return 0;
 }
 
 // send udp message , (by msgfd)
-void msg_sendto( const char * host, int port, char * msg, int len ) 
+void msg_sendto( const char * host, int port, const char * msg, int len ) 
 {
 	struct sockad sad ;
 	net_addr(host, port, &sad);
-	sendto( msgfd, msg, len, 0, &(sad.addr), sad.addrlen);
-	
+	sendto( msgfd, msg, len, 0, &(sad.s.saddr), sad.len);
 }
 
 // return peer ip address, for tvs key check fix (ply266.dll)
 int net_peer(int sockfd)
 {
 	struct sockad peeraddr ;
-	peeraddr.addrlen = sizeof(peeraddr)-sizeof(peeraddr.addrlen);
-	getpeername( sockfd, &(peeraddr.addr), &(peeraddr.addrlen) );
-	return ((sockaddr_in *)&peeraddr.addr)->sin_addr.s_addr ;	
+	peeraddr.len = sizeof(peeraddr.s);
+	getpeername( sockfd, &(peeraddr.s.saddr), &(peeraddr.len) );
+    return peeraddr.s.saddr_in.sin_addr.s_addr;
 }
 
 int net_connect(const char *netname, int port)
@@ -579,7 +578,6 @@ void net_uninit()
         net_run = 0;				// stop net_thread.
         net_trigger();
         pthread_join(net_threadid, NULL);
-        net_threadid = NULL ;
         closesocket(serverfd);
         net_drop( msgfd, (char *)net_multicast_addr );
         closesocket(msgfd);

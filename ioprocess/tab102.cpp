@@ -114,7 +114,7 @@ static int verifyChecksum(unsigned char *buf, int size)
   return  0;
 }
 
-void writeGforceStatus(char *status)
+void writeGforceStatus(const char *status)
 {
   FILE *fp;
   fp = fopen("/var/dvr/gforce", "w");

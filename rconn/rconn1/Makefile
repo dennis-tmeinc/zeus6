@@ -13,7 +13,7 @@ EXTSOURCES=../dvrsvr/config.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 CFLAGS+= -DANDROID_CLIENT
-LDFLAGS= -lstdc++ -lpthread
+LDFLAGS += -lpthread
 
 rconn : $(SOURCES) $(EXTSOURCES) $(EXTHEADERS)
 	$(CC) -g $(CFLAGS) -o $@ $(SOURCES) $(EXTSOURCES) $(LDFLAGS)

@@ -43,9 +43,9 @@ OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
 # LIBRARY=libdio.so
 
-#LDFLAGS= -lpthread -lstdc++ -L./eagle8851 -leagle8851 libfbdraw.so -Wl,-rpath,.
+#LDFLAGS += -lpthread -L./eagle8851 -leagle8851 libfbdraw.so -Wl,-rpath,.
 
-LDFLAGS = -lpthread -lm -lstdc++ \
+LDFLAGS += -lpthread -lm \
 	-L./eagle8851 -leagle8851 libfbdraw.so -lxmlwrapper -lexpat -lmemmgr -lmsgreader \
 	-lvideocap -lsharedbuffmgr -lframeratectrl -lfreetype \
 	-lmassmemaccess -lh264enc -ljpegenc -lresize \

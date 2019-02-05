@@ -1836,7 +1836,7 @@ static char *www_genserialno(char *buf, int bufsize)
 // initialize www data for setup page
 static void www_setup()
 {
-	char *getsetup = "cgi/getsetup";
+	const char *getsetup = "cgi/getsetup";
 	pid_t childpid;
 	childpid = fork();
 	if (childpid == 0)
@@ -1961,7 +1961,7 @@ static char *str_trimtail(char *str)
 	return str;
 }
 
-static void setpoliceid(char *newid)
+static void setpoliceid(const char *newid)
 {
 	array<string> idlist;
 	FILE *fid;

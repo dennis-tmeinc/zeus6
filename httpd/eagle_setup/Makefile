@@ -1,69 +1,79 @@
-
 # Makefile for Eagle32 DVR web base setup app
 #
 
 include ../../config
 
 #SOURCES=eagle_setup.cpp md5.cpp
-SOURCES=eagle_setup.cpp ../../dvrsvr/md5.cpp
+SOURCES=login.cpp \
+	getquery.cpp \
+	loginx.cpp \
+	pagevalue.cpp \
+	cfgupload.cpp \
+	firmwareupd.cpp \
+	mcufwupd.cpp \
+	mfid.cpp \
+	gangle.cpp \
+	getjpeg.cpp \
+	eagle_setup.cpp \
+	$(PROJDIR)/lib/json/json.cpp \
+	$(PROJDIR)/dvrsvr/config.cpp \
+	$(PROJDIR)/dvrsvr/string.cpp \
+	$(PROJDIR)/dvrsvr/md5.cpp \
+	$(PROJDIR)/dvrsvr/crypt.cpp \
+	$(PROJDIR)/ioprocess/diomap.cpp \
+	$(PROJDIR)/lib/net/net.cpp
 
-EXTHEADERS=../../dvrsvr/config.h ../../dvrsvr/genclass.h
-EXTSOURCES=../../dvrsvr/config.cpp ../../dvrsvr/string.cpp ../../dvrsvr/crypt.cpp
-
-HEADERS=
+HEADERS = $(PROJDIR)/dvrsvr/config.h $(PROJDIR)/dvrsvr/genclass.h $(PROJDIR)/dvrsvr/dvr.h $(PROJDIR)/ioprocess/diomap.h
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
-LDFLAGS= -lstdc++
-
-CFLAGS+= -I../dvrsvr -Wall
-
-TARGET= login loginx\
+TARGET= login \
+	loginx\
 	pagevalue\
 	cfgupload\
 	firmwareupd\
 	mcufwupd\
 	mfid
 
+LDFLAGS += -lcrypt
 
 all: $(TARGET)
 
-login : login.cpp getquery.cpp
-	$(CC) $(CFLAGS) -o $@ login.cpp getquery.cpp $(LDFLAGS) -lcrypt
-	
-loginx : loginx.cpp getquery.cpp
-	$(CC) $(CFLAGS) -o $@ loginx.cpp getquery.cpp $(LDFLAGS) -lcrypt
+login : login.o getquery.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-pagevalue : pagevalue.cpp getquery.cpp ../../lib/json/json.cpp
-	$(CC) $(CFLAGS) -o $@ pagevalue.cpp  getquery.cpp ../../lib/json/json.cpp $(LDFLAGS)
+loginx : loginx.o getquery.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-cfgupload : cfgupload.cpp
-	$(CC) $(CFLAGS) -o $@ cfgupload.cpp $(LDFLAGS)
+pagevalue : pagevalue.o getquery.o $(PROJDIR)/lib/json/json.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-firmwareupd : firmwareupd.cpp
-	$(CC) $(CFLAGS) -o $@ firmwareupd.cpp $(LDFLAGS)
+cfgupload : cfgupload.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-mcufwupd : mcufwupd.cpp
-	$(CC) $(CFLAGS) -o $@ mcufwupd.cpp $(LDFLAGS)
+firmwareupd : firmwareupd.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-mfid : mfid.cpp ../../dvrsvr/md5.cpp getquery.cpp
-	$(CC) $(CFLAGS) -o $@ mfid.cpp ../../dvrsvr/md5.cpp getquery.cpp $(EXTSOURCES) $(LDFLAGS)
+mcufwupd : mcufwupd.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-gangle.cgi : gangle.cpp getquery.cpp ../../ioprocess/diomap.cpp ../../ioprocess/diomap.h
-	$(CC) $(CFLAGS) -o $@ gangle.cpp getquery.cpp ../../ioprocess/diomap.cpp -lm $(LDFLAGS)
+mfid : mfid.o getquery.o $(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/md5.o $(PROJDIR)/dvrsvr/crypt.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-getjpeg.cgi : getjpeg.cpp getquery.cpp ../net.cpp ../../dvrsvr/dvr.h
-	$(CC) $(CFLAGS) -o $@ getjpeg.cpp getquery.cpp ../net.cpp  $(LDFLAGS)
+gangle.cgi : gangle.o getquery.o $(PROJDIR)/ioprocess/diomap.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-eagle_setup : eagle_setup.cpp ../../dvrsvr/md5.cpp
-	$(CC) $(CFLAGS) -o $@ eagle_setup.cpp ../../dvrsvr/md5.cpp $(EXTSOURCES) $(LDFLAGS)
+getjpeg.cgi : getjpeg.o getquery.o $(PROJDIR)/lib/net/net.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
 
-%.o : %.cpp $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -c -o $@ $<
+eagle_setup : eagle_setup.o $(PROJDIR)/dvrsvr/md5.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+
+%.o : %.cpp
+	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f $(TARGET)
 	rm -f eagle_setup *.cgi
 	rm -f $(OBJS)
 	rm -f *.o
-

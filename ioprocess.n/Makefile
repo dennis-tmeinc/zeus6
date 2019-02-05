@@ -13,12 +13,12 @@ HEADERS=diomap.h netdbg.h mcu.h cdc.h gforce.h iomisc.h yagf.h
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
 ifeq ($(EAGLE),eagle32)
-LDFLAGS= -lpthread -lstdc++ -L../eaglesvr/$(EAGLE) -lsdk -ldadsp ../eaglesvr/$(EAGLE)/dsplink.lib
+LDFLAGS += -lpthread -L../eaglesvr/$(EAGLE) -lsdk -ldadsp ../eaglesvr/$(EAGLE)/dsplink.lib
 else
-LDFLAGS= -lpthread -lstdc++ -lrt -Wl,-rpath,.
+LDFLAGS += -lpthread -lrt -Wl,-rpath,.
 endif
 
-CFLAGS+= -I../dvrsvr -Wall
+CFLAGS += -I../dvrsvr -Wall
 TARGET=ioprocess panelled devicepower buzzer iowait
 
 all: $(TARGET)

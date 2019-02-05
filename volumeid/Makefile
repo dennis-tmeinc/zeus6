@@ -4,30 +4,21 @@
 
 include ../config
 
-SOURCES=
+SRCS = volumeid.c md5check.c md5.c
 
-EXTHEADERS=
-EXTSOURCES=
-
-HEADERS=
-
-OBJS = $(patsubst %.c, %.o, $(SOURCES))
-
-LDFLAGS=
+OBJS = $(patsubst %.c, %.o, $(SRCS))
 
 CFLAGS += -I../dvrsvr
 
 all: volumeid md5check
 
-volumeid : volumeid.c $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ volumeid.c $(EXTSOURCES) $(LDFLAGS)
-#	cp volumeid /home/jianpeng/eagle34/dvrtest/
+volumeid : volumeid.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-md5check :  md5check.c md5.c $(EXTSOURCES) $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -o $@ md5check.c md5.c $(EXTSOURCES) $(LDFLAGS)
-#	cp md5check /home/jianpeng/eagle34/dvrtest/
+md5check :  md5check.o md5.o
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
 
-%.o : %.c $(HEADERS) $(EXTHEADERS)
+%.o : %.c 
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :

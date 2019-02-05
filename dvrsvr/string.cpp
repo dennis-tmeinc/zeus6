@@ -5,7 +5,7 @@
 
 #include "genclass.h"
 
-int savetxtfile(char *filename, array <string> & strlist )
+int savetxtfile(const char *filename, array <string> & strlist )
 {
 	FILE *sfile ;
 	int i;
@@ -20,7 +20,7 @@ int savetxtfile(char *filename, array <string> & strlist )
 	return strlist.size();
 }
 
-int readtxtfile(char *filename, array <string> & strlist)
+int readtxtfile(const char *filename, array <string> & strlist)
 {
 	FILE *rfile;
 	string str ;
@@ -36,7 +36,7 @@ int readtxtfile(char *filename, array <string> & strlist)
 		fclose(rfile);
 	}
 
-	delete buffer ;
+	delete[] buffer ;
 	return strlist.size();
 }
 

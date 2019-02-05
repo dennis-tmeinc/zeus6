@@ -89,11 +89,12 @@ int local_setpoll( struct pollfd * pfd, int max )
 
 int local_process()
 {
-    if( local_sfd!=NULL && local_sfd->fd == local_socket && (local_sfd->revents & POLLIN) ) {
-        // just read it and dump it
-        char dummy[512] ;
-        net_recv(local_socket, (void *)dummy, sizeof(dummy));
-    }
+	if (local_sfd != NULL && local_sfd->fd == local_socket && (local_sfd->revents & POLLIN)) {
+		// just read it and dump it
+		char dummy[512];
+		return net_recv(local_socket, (void*)dummy, sizeof(dummy));
+	}
+	return 0;
 }
 
 void local_init()

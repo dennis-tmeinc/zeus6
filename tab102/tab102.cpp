@@ -1873,7 +1873,7 @@ void appinit() {
 }
 
 
-void writeTab102Status(char *status)
+void writeTab102Status(const char *status)
 {
   FILE *fp;
   fp = fopen("/var/dvr/tab102", "w");
@@ -2649,6 +2649,7 @@ int setTabLiveFlag()
 	}
 	p_dio_mmap->tab102_isLive=1;
 	p_dio_mmap->tab102pid=tabpid; 
+  return 0;
 }
 
 
