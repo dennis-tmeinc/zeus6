@@ -14,7 +14,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <math.h>
 #include <sys/time.h>
 #include <time.h>
 #include <sys/types.h>
@@ -63,8 +62,6 @@ void channel::closechannel(void)
 		target = NULL ;
 	}
 
-	stage = STAGE_CLOSED ;
-		
 	if( sock>=0 ) close(sock);
 	sock=-1;
 	
@@ -74,6 +71,7 @@ void channel::closechannel(void)
 		sfifo.remove(sfifo.first());
 	}
 
+	stage = STAGE_CLOSED ;
 }
 	
 int  channel::setfd( struct pollfd * pfd, int max )
@@ -88,7 +86,7 @@ int  channel::setfd( struct pollfd * pfd, int max )
 			pfd->events = 0 ;
 			if( target!=NULL && !(target->block()) && r_xoff == 0 )
 				pfd->events |= POLLIN ;
-			if( sfifo.first()!=NULL )
+			if( sfifo.first()!=NULL  || stage == STAGE_CLOSING )
 				pfd->events |= POLLOUT ;
 			if( pfd->events != 0 ) {
 				pfd->fd = sock ;
@@ -104,16 +102,10 @@ int  channel::setfd( struct pollfd * pfd, int max )
 
 int channel::process() 
 {
-	int r ;
-	if( sfd!=NULL && sfd->fd == sock ) {
-		
-		if( sock>=0 && ( sfd->revents & POLLIN ) ) {
-			do_read( CHANNEL_BUFSIZE ) ;
-		}
-		
-		if( sock>=0 && ( sfd->revents & POLLOUT ) ) {
+	if( sfd!=NULL && sock>=0 && sfd->fd == sock ) {
+		if(sfd->revents & POLLOUT ) {
 			do_send();
-			
+			/* 
 			if( target!=NULL && target->stage == STAGE_REG  ) {
 				if( sfifo.first()!=NULL ) {
 					// to send xoff to target
@@ -130,17 +122,21 @@ int channel::process()
 					}
 				}
 			}
-				
+			*/
 		}
-	}
-		
-	if( stage == STAGE_CLOSING && sfifo.first()==NULL ) {
-		return 0 ;
+		else if( sfd->revents & POLLIN ) {
+			do_read( CHANNEL_BUFSIZE ) ;
+		}
+		else if( sfd->revents & (POLLHUP|POLLERR) ) {
+			close(sock);
+			sock = -1 ;
+		}
 	}
 	
 	if( sock<0 ||
+		(stage == STAGE_CLOSING && sfifo.first()==NULL) ||
 		(g_runtime - activetime) > 3600000 ) {		// 1 hr idling to close
-		return 0 ;
+		closechannel();
 	}
 	
 	return stage ;

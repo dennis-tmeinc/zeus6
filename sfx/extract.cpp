@@ -97,6 +97,7 @@ int extract( const char * sfxfile, const char * pattern )
 		else if( S_ISREG(fhd.filemode) ) {
 			fp_file = fopen( TMP_F, "w" );
 			if( fp_file ) {
+				remove(filename);
 	            if( fhd.compsize>0 ) {
 					if( (fhd.filemode & LZMA_FLAG) ) {
 						/*

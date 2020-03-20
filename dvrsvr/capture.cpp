@@ -275,10 +275,8 @@ void capture::gpsframe()
 	struct gps mGPS;
 
 	//add the gps data if gps data is available
-	get_gps_data(&mGPS);
-	if (mGPS.gps_valid)
+	if ( get_gps_data(&mGPS)  )
 	{
-
 		gpsData = (char *)mem_alloc(1024);
 
 		//gps Tag
@@ -393,7 +391,7 @@ void capture::update()
 		if (m_signal != v)
 		{
 			m_signal = v;
-			if (!dio_standby_mode) // don't record video lost event in standby mode. (Requested by Harrison)
+			if (!dio_norecord) // don't record video lost event in standby mode. (Requested by Harrison)
 			{
 				dvr_log("Camera %d video signal %s.", m_channel + 1, m_signal ? "on" : "lost");
 			}
@@ -535,15 +533,18 @@ int capture::updateOSD(char *osd)
 
 	// line 2 right, g-force value
 	osdbuf[0] = 0;
-	if (m_attr.ShowPeak && isPeakChanged())
+	if (m_attr.ShowPeak && dio_gforce_serial())
 	{
-		sprintf(osdbuf, "%c%5.2lf,%c%5.2lf,%c%5.2lf  ",
-				g_fb >= 0.0 ? 'F' : 'B',
-				g_fb >= 0.0 ? g_fb : -g_fb,
-				g_lr >= 0.0 ? 'R' : 'L',
-				g_lr >= 0.0 ? g_lr : -g_lr,
-				g_ud >= 1.0 ? 'D' : 'U',
-				g_ud >= 1.0 ? (g_ud - 1) : (1 - g_ud));
+		float fb, lr, ud ;
+		if( dio_get_gforce( &fb, &lr, &ud) ) {
+			sprintf(osdbuf, "%c%5.2lf,%c%5.2lf,%c%5.2lf  ",
+					fb >= 0.0 ? 'F' : 'B',
+					fb >= 0.0 ? fb : -fb,
+					lr >= 0.0 ? 'R' : 'L',
+					lr >= 0.0 ? lr : -lr,
+					ud >= 1.0 ? 'D' : 'U',
+					ud >= 1.0 ? (ud - 1) : (1 - ud));
+		}
 	}
 	osdline += osd_line(osdline, osdbuf, ALIGN_RIGHT | ALIGN_TOP, 16, 36);
 
@@ -622,6 +623,14 @@ void cap_restart(int channel)
 		cap_channel[channel]->restart();
 	}
 }
+
+void cap_update()
+{
+	int i;
+    for(i=0; i<cap_channels; i++ ) {
+        cap_channel[i]->update();
+    }
+}    
 
 void cap_start()
 {

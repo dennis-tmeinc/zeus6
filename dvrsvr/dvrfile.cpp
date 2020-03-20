@@ -250,7 +250,7 @@ void dvrfile::close()
 		m_mirror_handle = 0;
 	}
 
-	m_keyarray.empty();
+	m_keyarray.clean();
 }
 
 int dvrfile::read(void *buffer, size_t buffersize)
@@ -637,7 +637,7 @@ int dvrfile::readkey(array<struct dvr_key_t> &keyarray)
 		keyfile = fopen(pk, "r");
 	}
 
-	keyarray.setsize(0);
+	keyarray.clean();
 
 	if (keyfile)
 	{
@@ -881,6 +881,10 @@ char *dvrfile::makedvrfilename(struct dvrtime *filetime, int channel, int lock, 
 {
 	int l;
 	string filename;
+
+	// do not open file if frame time is wrong
+	if( filetime->year < 2019)	// before firmware released year 
+		return NULL;
 
 	// retrieve base dir depends on file type ?
 	char *basedisk = disk_getbasedisk(lock);

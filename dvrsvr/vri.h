@@ -54,7 +54,6 @@ public:
 
 
 void vri_log( char * buf );
-void vri_tag( char * buf, int tagsize );
 char * vri_lookup( struct dvrtime * dvrt );
 
 #endif		// __VRI_H__

@@ -18,7 +18,7 @@
 #include <sys/ioctl.h>
 #include <stdarg.h>
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 
 #define NET_DEBUG

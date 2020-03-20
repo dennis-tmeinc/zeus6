@@ -26,12 +26,13 @@ SOURCES=main.cpp \
 		vri.cpp \
 		fifoswap.cpp \
 		archive.cpp \
-		ipstream.cpp
+		ipstream.cpp \
+		../ioprocess/diomap.cpp
 
 HEADERS=../cfg.h\
 		dvr.h \
 		genclass.h \
-		cfg.h \
+		config.h \
 		fbwindow.h \
 		crypt.h \
 		mpegps.h \
@@ -41,12 +42,15 @@ HEADERS=../cfg.h\
 		dir.h \
 		vri.h \
 		archive.h \
+		$(PROJDIR)/lib/util/string.h\
+		$(PROJDIR)/lib/util/array.h\
 		../ioprocess/diomap.h
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
 ifeq ($(EAGLE),zeus8)
-  LDFLAGS += -L./libzeus8 -lipcamerasdk -luuid -leagle -lgm -lpthread -lstdc++
+  LDFLAGS += -L./libzeus8 
+  LDLIBS += -lpthread -lrt -lm -lipcamerasdk -luuid -leagle -lgm  -lsupc++
 
 else
   LDFLAGS += -lstdc++ -lpthread -lm \
@@ -60,11 +64,11 @@ endif
 
 # dvrsvr : $(OBJS) $(LIBRARY)
 dvrsvr : $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 #.cpp.o:
 %.o : %.cpp $(HEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $<
 
 clean :
 	rm -f *.o

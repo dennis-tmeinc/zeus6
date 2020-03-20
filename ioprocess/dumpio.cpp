@@ -22,48 +22,20 @@
 #include "../cfg.h"
 
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 #include "diomap.h"
-
-struct dio_mmap * p_dio_mmap ;
 
 void dio_init()
 {
-    int i;
-    int fd ;
-    void * p ;
-    string iomapfile ;
-
-    config dvrconfig(CFG_FILE);
-    iomapfile = dvrconfig.getvalue( "system", "iomapfile");
-    
-    p_dio_mmap=NULL ;
-    if( iomapfile.length()==0 ) {
-        return ;						// no DIO.
-    }
-
-
-    fd = open(iomapfile.getstring(), O_RDWR );
-    if( fd<=0 ) {
-        printf( "IO module not started!\n");
-        return ;
-    }
-    
-    p=mmap( NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0 );
-    close( fd );                                // don't need fd to use memory map.
-    if( p==(void *)-1 || p==NULL ) {
-        printf( "IO memory map failed!\n");
-        return ;
-    }
-    p_dio_mmap = (struct dio_mmap *)p ;
-
+	if( dio_mmap()==NULL) {
+		printf("Error open IO map!\n");
+		exit(1);
+	}
 }
 
 void dio_uninit()
 {
-    if( p_dio_mmap ) {
-        munmap( p_dio_mmap, sizeof( struct dio_mmap ) );
-    }
+	dio_munmap();
 }
 
 #define DUMP_I(F) printf("%3d: "#F"  \t: %d\n",  offsetof(struct dio_mmap, F), (int)(p_dio_mmap->F) );
@@ -109,7 +81,7 @@ void print_dio()
 	DUMP_F(gps_direction);
 	DUMP_F(gps_latitude);
 	DUMP_F(gps_longitud);
-	DUMP_F(gps_gpstime);
+	DUMP_I(gps_gpstime);
     
 
 	DUMP_X(panel_led);
@@ -119,7 +91,7 @@ void print_dio()
 	DUMP_I(hdtemperature1);
 	DUMP_I(hdtemperature2);
    
-
+	/*
 	DUMP_I(gforce_log0);
 	DUMP_F(gforce_right_0);
 	DUMP_F(gforce_forward_0);
@@ -129,12 +101,13 @@ void print_dio()
 	DUMP_F(gforce_right_1);
 	DUMP_F(gforce_forward_1);
 	DUMP_F(gforce_down_1);
+	*/
     
 	DUMP_F(gforce_forward_d);
 	DUMP_F(gforce_down_d);
 	DUMP_F(gforce_right_d);
 
-	DUMP_I(gforce_changed);
+	DUMP_I(gforce_serial);
 	DUMP_I(synctimestart);
 
 	DUMP_I(beeper);

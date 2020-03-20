@@ -8,7 +8,7 @@
 
 #include "dvrsvr/crypt.h"
 #include "dvrsvr/genclass.h"
-#include "dvrsvr/cfg.h"
+#include "dvrsvr/config.h"
 
 static const char ON_STR[]="on";
 

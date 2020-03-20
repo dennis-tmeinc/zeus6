@@ -166,7 +166,7 @@ void rec_channel::onframe(cap_frame * pframe)
     
     if( m_recstate == REC_STOP ||
        rec_pause > 0 ||
-       dio_standby_mode )
+       dio_norecord )
     {
         if( m_fifohead == NULL ) {
 			putfifo( newfifo( NULL ) );		// give a file close time
@@ -546,7 +546,7 @@ int rec_channel::dorecord()
 	if( rec_run == 0 ||
 		m_recstate == REC_STOP ||
 		rec_pause>0 ||
-		dio_standby_mode ) 
+		dio_norecord ) 
 	{
 		closefile();
 		clearfifo();
@@ -679,8 +679,6 @@ void *rec_thread(void *param)
     int norec=0 ;
     int r ;
     
-    nice(5);
-    
     while (rec_run) {
         int w = 0 ;
         for( ch = 0 ; ch <rec_channels && rec_run ; ch++ ) {
@@ -727,8 +725,9 @@ void rec_channel::update()
         return ;
     }
 
-	if( dio_runmode() == 0 ) {
+	if( dio_norecord ||  dio_runmode() == 0 ) {
 		m_recstate == REC_STOP ;
+		return;
 	}
 	else {
 		if( m_recstate == REC_STOP )
@@ -872,8 +871,8 @@ void rec_init()
     }
     if (rec_maxfilesize < 100000000)
         rec_maxfilesize = 100000000;
-    if (rec_maxfilesize > 1500000000)
-        rec_maxfilesize = 1500000000;
+    if (rec_maxfilesize > 1000000000)
+        rec_maxfilesize = 1000000000;
     
     rec_threadid=0 ;
 

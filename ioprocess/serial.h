@@ -11,10 +11,11 @@
 
 // open serial port
 int serial_open(char * device, int buadrate);
-int serial_close( int handle );
-//
-int serial_dataready(int handle, int usdelay, int * usremain);
-int serial_read( int handle, char * buffer, int buffersize );
-int serial_write( int handle, char *buffer, int buffersize );
+int serial_dataready(int handle, int usdelay);
+void serial_setspeed( int hserial, int buadrate);
+
+#define serial_read read
+#define serial_write write
+#define serial_close close
 
 #endif // __SERIAL_H__

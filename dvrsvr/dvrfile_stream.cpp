@@ -448,7 +448,7 @@ int dvrfile::readkey( array <struct dvr_key_t> &keyarray )
 		keyfile=fopen( pk, "r" );
 	}
 
-	keyarray.setsize(0);
+	keyarray.clean();
 	
 	if( keyfile ) {
 		struct dvr_key_t key;
@@ -672,11 +672,15 @@ char * dvrfile::makedvrfilename( struct dvrtime * filetime, int channel, int loc
 {
 	int l ;
 	string filename ;
+
+	// do not create file before 2019 ( firmware build year )
+	if( filetime->year < build_year )
+		return NULL;
 	
 	// retrieve base dir depends on file type ?
 	char * basedisk = disk_getbasedisk( lock ) ;
 	if( basedisk == NULL ) {
-		// disk not ready, frame discarded
+		// disk not ready, do not create file
 		return NULL;
 	}
 	

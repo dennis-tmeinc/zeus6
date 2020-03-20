@@ -20,7 +20,7 @@
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 #include "rconn.h"
 

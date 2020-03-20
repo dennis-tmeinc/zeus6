@@ -7,7 +7,6 @@
 #include <netinet/tcp.h>
 #include <arpa/inet.h>
 #include <errno.h>
-#include <math.h>
 #include <sys/time.h>
 #include <time.h>
 #include <sys/types.h>
@@ -22,7 +21,7 @@
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 #include "rconn.h"
 
@@ -706,13 +705,8 @@ void rconn_run()
 #endif
 		}
 		else if (r < 0)
-		{ // error!!!
-			// ? what to do ?
-
-			// reset main connection
-			delete mainconn;
-			mainconn = new rconn();
-
+		{ 
+			// error!, this count be an interrupt from use
 #ifdef ANDROID_CLIENT
 			adb_reset();
 #endif
@@ -778,38 +772,10 @@ void rc_init()
 	}
 
 	// device id
-	FILE *fdid = fopen(APP_DIR "/did", "r");
-
-	if (fdid == NULL)
-	{
-		fdid = fopen(APP_DIR "/did", "w+");
-		if (fdid)
-		{
-			FILE *fr;
-			fr = fopen("/sys/class/net/eth0/address", "r");
-			if (fr)
-			{
-				fscanf(fr, "%40s", (char *)v.expand(80));
-				fprintf(fdid, "%s", (char *)v);
-				fclose(fr);
-			}
-
-			fr = fopen("/dev/urandom", "r");
-			if (fr)
-			{
-				fread(&iv, sizeof(iv), 1, fr);
-				fprintf(fdid, "%x", iv);
-				fread(&iv, sizeof(iv), 1, fr);
-				fprintf(fdid, "%x", iv);
-				fclose(fr);
-			}
-			rewind(fdid);
-		}
-	}
-
+	FILE *fdid = fopen("/proc/sys/kernel/random/uuid", "r");
 	if (fdid)
 	{
-		fscanf(fdid, "%79s", (char *)v.expand(80));
+		fscanf(fdid, "%99s", (char *)v.expand(100));
 		g_did = v;
 		fclose(fdid);
 	}

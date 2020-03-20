@@ -38,6 +38,9 @@
 // where dvr var files created
 #define VAR_DIR		"/var/dvr"
 
+// shared io map file
+#define DVRIOMAP    "/dvriomap"
+
 #define WWWROOT	"/var/www"
 #define WWWSERIALFILE "/var/www/wwwserialnofile"
 

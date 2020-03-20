@@ -4,21 +4,19 @@
 
 include ../config
 
+HEADERS =../dvrsvr/config.h ../dvrsvr/genclass.h ../ioprocess/diomap.h ../ioprocess/serial.h \
+		$(PROJDIR)/lib/util/string.h\
+		$(PROJDIR)/lib/util/array.h
 
-SOURCES = glog.cpp
-HEADERS =
-
-HEADERS +=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
-SOURCES +=../dvrsvr/config.cpp ../dvrsvr/string.cpp
+SOURCES =  glog.cpp ../dvrsvr/config.cpp ../dvrsvr/string.cpp ../ioprocess/serial.cpp ../ioprocess/diomap.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
 CFLAGS += -I../dvrsvr
-LDFLAGS += -lpthread 
 #-L../dvrsvr/eagle32 -lsdk -ldadsp ../dvrsvr/eagle32/dsplink.lib
 
 glog : $(OBJS) 
-	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS) $(LDLIBS)
 #	cp glog /home/jianpeng/eagle34/dvrtest/
 
 %.o : %.cpp $(HEADERS)

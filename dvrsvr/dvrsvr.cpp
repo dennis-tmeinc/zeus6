@@ -133,7 +133,7 @@ int dvrsvr::read()
 		}
 		else if (m_req.reqsize > 0) // wait for extra data
 		{
-			m_recvbuf = (char *)mem_alloc(m_req.reqsize + 1);
+			m_recvbuf = (char *)mem_alloc(m_req.reqsize + 4);
 			if (m_recvbuf == NULL)
 			{
 				close(); // no enough memory
@@ -307,6 +307,7 @@ int dvrsvr::onframe(cap_frame *pframe)
 			while (nfifo != NULL)
 			{
 				if (nfifo->bufsize == sizeof(struct dvr_ans) &&
+					nfifo->loc == 0 &&
 					((struct dvr_ans *)nfifo->buf)->anscode == ANSSTREAMDATA &&
 					((struct dvr_ans *)nfifo->buf)->data == FRAMETYPE_KEYFRAME)
 				{
@@ -2080,7 +2081,8 @@ void dvrsvr::ReqSendData()
 		if (m_recvbuf && m_req.reqsize > 0)
 		{
 			// select a new offer ID.
-			vri_tag(m_recvbuf, m_req.reqsize);
+			m_recvbuf[m_req.reqsize]=0;
+			vri_log(m_recvbuf);
 		}
 		ans.anscode = ANSOK;
 		ans.data = 0;

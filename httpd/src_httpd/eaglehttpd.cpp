@@ -1055,7 +1055,7 @@ int http_inputpost()
 {
     char * 	request_method ;
     int    	content_length=0 ;
-    char * 	content_type ;
+    const char * content_type ;
     char * 	post_string;
     char * 	p ;
     int		res = 0 ;
@@ -1073,11 +1073,13 @@ int http_inputpost()
     }
 
     content_type = getenv("HTTP_CONTENT_TYPE");
+	if( content_type == NULL ) {
+		content_type = "";
+	}
     request_method = getenv("REQUEST_METHOD") ;
     if( strcmp( request_method, "POST" )==0 ) 	// support "POST" contents only
     {
-        if( content_length<200000 &&
-			content_type &&
+        if( content_length<1000000 &&
             strncasecmp( content_type, "application/x-www-form-urlencoded", 32)==0 )
         {
             post_string = (char *)malloc( content_length + 1 );
@@ -1090,8 +1092,7 @@ int http_inputpost()
                 free( post_string );
             }
         }
-        else if( content_length<20000000 && 
-			content_type &&
+        else if( content_length<100000000 && 
 			strncasecmp( content_type, "multipart/form-data", 19 )==0 ) {
             res = http_inputmultipart(content_length);
         }

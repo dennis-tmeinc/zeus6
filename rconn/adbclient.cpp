@@ -21,6 +21,12 @@
 #define ADB_PORT  5037
 #define ADB_PORT_S "5037"
 
+#ifdef DVRMONITOR
+#define PWMSG "com.tme_inc.dvrmonitor/.PwBootReceiver" 
+#else
+#define PWMSG "com.tme_inc.pwv/.PwBootReceiver" 
+#endif
+
 static int	adb_track_socket = 0;
 static int  adb_device_num = 0 ;		// number of online device
 static struct pollfd * adb_track_sfd ;
@@ -131,7 +137,7 @@ static int adb_service( int fd, const char * service, const char * device = NULL
 static void adb_startserver()
 {
 	printf("Start adb server.\n");
-	system("/davinci/dvr/adb devices");
+	system("adb devices");
 }
 
 // scan/wait for android device
@@ -239,7 +245,10 @@ static int adb_startPWservice( char * serialno )
 	int s ;
 	s = adb_local_connect();
 	if( s>0 ) {
-		if( adb_service( s, "shell:svc power stayon usb ;am broadcast -n com.tme_inc.pwv/.PwBootReceiver;echo --eos", serialno ) ) {
+		char pwservicestr[256];
+		sprintf(pwservicestr, "shell:svc power stayon usb ;am broadcast -n %s;echo --eos",
+			PWMSG );
+		if( adb_service( s, pwservicestr, serialno ) ) {
 			// give pwv service some time to start
 			char rsp[256] ;
 

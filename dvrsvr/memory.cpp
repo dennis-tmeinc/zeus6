@@ -56,6 +56,8 @@ int mem_available()
 #define MEM_DECREF( p ) ( MEM_REF(p) -= 0x01000000 )
 #define MEM_CHECK( p )  ( MEM_TAG( p ) == (int)(p) )
 
+#define MEM_MMAP_SIZE	(10000)
+
 void *mem_alloc(int size)
 {
 	if (size < 0 || size>0x00800000 ) {
@@ -65,7 +67,7 @@ void *mem_alloc(int size)
     int *pmemblk;
     size = (size/sizeof(int) + 3) * sizeof(int) ;
     
-    if( size>8000 ) {
+    if( size>MEM_MMAP_SIZE ) {
 		pmemblk = (int*) mmap( NULL, size, PROT_READ|PROT_WRITE, MAP_PRIVATE|MAP_ANONYMOUS, -1, 0 );
 		if( pmemblk ) *pmemblk = size ;
 	}
@@ -99,7 +101,7 @@ void mem_free(void *pmem)
 		if( MEM_DECREF( pmem ) < 0 ) {
 			MEM_TAG(pmem)=0 ;		// clear memory tag
 			int siz = MEM_SIZ( pmem )	;
-			if( siz > 0 ) { 		// mmap
+			if( siz > MEM_MMAP_SIZE ) { 		// mmap
 				munmap( & MEM_REF( pmem ), siz );
 			}
 			else {
@@ -150,6 +152,7 @@ void *mem_addref(void *pmem, int memsize)
 
 void mem_init()
 {
+	pthread_mutex_t mutex_init=PTHREAD_RECURSIVE_MUTEX_INITIALIZER_NP ;
 	mem_mutex = mutex_init ;
 }
 

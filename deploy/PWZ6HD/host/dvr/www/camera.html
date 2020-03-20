@@ -16,9 +16,10 @@
 
 $(function(){
 
+    var resolution = "5" ;
+
     $("select[name='camera_type']").change( function() {
         var op = "" ;
-        var def = "5";
 
         var camtype = $("select[name='camera_type']").val();
 
@@ -43,7 +44,7 @@ $(function(){
 
         $("select[name='resolution']" ).empty();
         $("select[name='resolution']" ).append( op );
-        $("select[name='resolution']" ).val( def );
+        $("select[name='resolution']" ).val( resolution );
     });
 
     var num_camera = <!--#include file="camera_number" --> ;
@@ -67,6 +68,7 @@ $(function(){
                 if( sessionStorage ) {
                     sessionStorage.cameraid = xid;
                 }
+                resolution = data.resolution ;
                 data.nextcameraid = xid ;
                 JSONinitfield( data );
                 $("select#id_nextcameraid" ).selectmenu( "refresh" );

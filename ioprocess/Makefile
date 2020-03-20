@@ -4,41 +4,44 @@
 
 include ../config
 
-HEADERS=diomap.h mcu.h serial.h
-EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h
-EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
+HEADERS=diomap.h mcu.h serial.h \
+		$(PROJDIR)/lib/util/string.h\
+		$(PROJDIR)/lib/util/array.h
 
-IOSOURCES=ioprocess.cpp mcu.cpp mcucmd.cpp tab102.cpp serial.cpp
+EXTHEADERS=../dvrsvr/config.h ../dvrsvr/genclass.h
+EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp diomap.cpp
+
+IOSOURCES=ioprocess.cpp mcu.cpp mcucmd.cpp serial.cpp
 
 IOOBJS = $(patsubst %.cpp, %.o, $(IOSOURCES))
 EXTOBJS = $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
 #LDFLAGS = -L../dvrsvr/eagle32 -lsdk -ldadsp ../dvrsvr/eagle32/dsplink.lib
-LDFLAGS += -lpthread
+LDLIBS += -lpthread -lrt
 
 TARGET = ioprocess panelled devicepower buzzer dvrlog dumpio
 default: $(TARGET)
 
 ioprocess : $(IOOBJS) $(EXTOBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 dumpio : dumpio.o $(EXTOBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 panelled : panelled.o $(EXTOBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 devicepower : devicepower.o $(EXTOBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 buzzer : buzzer.o $(EXTOBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 dvrlog : dvrlog.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 %.o : %.cpp $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o

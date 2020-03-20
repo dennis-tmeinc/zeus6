@@ -20,7 +20,7 @@
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 #define TUNNEL_MAX	(100)
 #define TUNNEL_BUFSIZE (4000)

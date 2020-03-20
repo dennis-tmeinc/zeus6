@@ -11,6 +11,7 @@
 <script type="text/javascript">
 
 synctime=0 ;
+var system_value = <!--#include file="system_value" --> ;
 
 $(document).ready(function(){
 
@@ -24,11 +25,11 @@ $(document).ready(function(){
         document.getElementById("dvrstatus").reset();
         JSONinitfield( sval );
 
-        $("#id_cpu_usage").html( sval.cpu_usage + "%" ) ;
-        $("#id_total_memory").html( sval.memory_total + " Mbytes"  ) ;
-        $("#id_free_memory").html( sval.memory_free + " Mbytes" ) ;
-        $("#id_total_disk").html( sval.disk_total + " Mbytes" ) ;
-        $("#id_free_disk").html( sval.disk_free + " Mbytes" ) ;
+        $("#id_cpu_usage").html( sval.cpu_usage.toFixed(0) + "%" ) ;
+        $("#id_total_memory").html( sval.memory_total.toFixed(0) + " Mbytes"  ) ;
+        $("#id_free_memory").html( sval.memory_free.toFixed(0) + " Mbytes" ) ;
+        $("#id_total_disk").html( sval.disk_total.toFixed(0) + " Mbytes" ) ;
+        $("#id_free_disk").html( sval.disk_free.toFixed(0) + " Mbytes" ) ;
 
         var temp = parseInt( sval.temperature_system_c ) ;
         if( isNaN(temp) ) {
@@ -38,7 +39,7 @@ $(document).ready(function(){
         else {
             document.getElementById('id_tr_sys_temperature').style.display="" ;
             document.getElementById("id_sys_temperature").innerHTML=
-                (temp*9/5+32) + " \u00B0" + "F / "+ temp + " \u00B0"+"C" ;
+                (temp*9/5+32).toFixed(0) + " \u00B0" + "F / "+ temp + " \u00B0"+"C" ;
         }
 
         temp = parseInt( sval.temperature_disc_c ) ;
@@ -49,7 +50,7 @@ $(document).ready(function(){
         else {
              document.getElementById('id_tr_hd_temperature').style.display="" ;
              document.getElementById("id_hd_temperature").innerHTML=
-                (temp*9/5+32) + " \u00B0" + "F / "+ temp + " \u00B0"+"C" ;
+                (temp*9/5+32).toFixed(0) + " \u00B0" + "F / "+ temp + " \u00B0"+"C" ;
         }
 
         var i ;
@@ -61,8 +62,8 @@ $(document).ready(function(){
         var battery_st = [
             "Full charged", "Charging", "Disconnected", "Unknown" ];
 
-        $("#battery_state" ).html( battery_st[sval["battery_state"]] );
-        $("#battery_voltage" ).html( sval["battery_voltage"] + " V" );
+        $("#battery_state" ).html( battery_st[sval.battery_state] );
+        $("#battery_voltage" ).html( sval.battery_voltage.toFixed(2) + " V" );
 
         if( sval["gps_valid"] != 0 ) {
             var nlat = Number(sval["gps_latitude"]) ;
@@ -111,11 +112,11 @@ $(document).ready(function(){
                                                          +stime.toLocaleTimeString() );
         if( synctime == 1 ) {
             synctime = 0 ;
-            $.get( "cgi/dvrstatus.cgi?synctime="+stime.getTime(), statusvalue, "JSON" );
+            $.post( "cgi/dvrstatus.cgi?synctime="+stime.getTime(), statusvalue, "JSON" );
         }
         else if( ++count > 10 ) {
             count=0;
-            $.get( "cgi/dvrstatus.cgi", statusvalue, "JSON" );
+            $.post( "cgi/dvrstatus.cgi", statusvalue, "JSON" );
         }
         else {
             timer = setTimeout( update , 200 );
@@ -193,7 +194,7 @@ $(document).ready(function(){
 <form id="dvrstatus">
 
 <script type="text/javascript">
-var camera_num = <!--#include cameranumber="camera_number" --> ;
+var camera_num = system_value.totalcamera ;
 for( i=1; i<=camera_num; i++ ) {
  var name ;
  document.write( "<tr><td class=\"col1\">Camera "+i+" Status:</td>" );
@@ -207,6 +208,8 @@ for( i=1; i<=camera_num; i++ ) {
  name = "camera_"+i+"_recordstate" ;
  document.write( "<span id=\""+name+"\"></span></td></tr>" );
 }
+var num_bodycamera = system_value.totalbodycam ;
+
 </script>
 
 <tr>

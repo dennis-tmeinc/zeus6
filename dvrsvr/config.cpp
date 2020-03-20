@@ -1,5 +1,10 @@
+/*
+    DVR conf file 
+*/
 
-#include "dvr.h"
+#include <stdio.h>
+
+#include "config.h"
 
 static char *skipspace(char *line)
 {
@@ -153,7 +158,7 @@ int config::findkey(int index, const char *key )
 // return total sections found, (exclude blank section)
 int config::listsection( array <string> &sections )
 {
-    sections.setsize(0);
+    sections.clean();
     char * se ;
     int i=0;
     while( (se=enumsection(i))!=NULL ) {
@@ -165,7 +170,7 @@ int config::listsection( array <string> &sections )
 
 int config::listkey( const char * section, array <string> &keys )
 {
-    keys.setsize(0);
+    keys.clean();
     char * k ;
     int i = findsection(section);
     while( (k=enumkey(i)) != NULL ) {

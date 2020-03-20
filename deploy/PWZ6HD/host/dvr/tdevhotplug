@@ -73,27 +73,17 @@ case $1 in
                 if [ $? -eq 0 ] ; then      # FAT32 detected!
 
                     # pre-mount check
-
-                    rm /var/dvr/sddev
-                    rm /var/dvr/sdcheckdone
-                    /mnt/nand/dosfsckcheck
-                    echo /dev/${devname} > /var/dvr/sddev
+                    #rm /var/dvr/sddev
+                    #rm /var/dvr/sdcheckdone
+                    #/mnt/nand/dosfsckcheck
+                    #echo /dev/${devname} > /var/dvr/sddev
                     /mnt/nand/dosfsck -a /dev/${devname}
-                    n=$?
-
-                    case $n in
-                    "0")
-                        echo 0 > /var/dvr/fsckreturn
-                        ;;
-                    "1")
-                        echo 1 > /var/dvr/fsckreturn
-                        ;;
-                    "2")
-                        echo 2 > /var/dvr/fsckreturn
+                    r=$?
+                    echo $r > /var/dvr/fsckreturn
+                    if [ $r -eq 2 ]; then
                         echo 0 > /var/dvr/formatsd
                         /mnt/nand/mkdosfs -F 32 /dev/${devname}
-                        ;;
-                    esac
+                    fi
 
                     #   sleep 3
                     #   if [ -f /var/dvr/dosfsckkill ]; then
@@ -102,9 +92,7 @@ case $1 in
                     #   else
                     #      echo 1 > /var/dvr/noformatsd
                     #   fi
-
                     echo 1 > /var/dvr/sdcheckdone
-
 
                     if mount /dev/${devname} ${xmountdir}/${devname} -o shortname=winnt ; then
 

@@ -14,6 +14,7 @@
 #include <sys/ioctl.h>
 #include <linux/rtc.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 
 #include "../cfg.h"
 

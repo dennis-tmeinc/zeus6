@@ -19,7 +19,7 @@ $(OUT): $(OBJS)
 string.o: ../dvrsvr/string.cpp ../dvrsvr/genclass.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
-config.o: ../dvrsvr/config.cpp ../dvrsvr/cfg.h
+config.o: ../dvrsvr/config.cpp ../dvrsvr/config.h
 	$(CC) -c $(CFLAGS) $< -o $@
 
 .PHONY: clean

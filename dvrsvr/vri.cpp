@@ -145,6 +145,8 @@ static void vri_save_day_help( char * logdisk, array <vri> & vlist, struct dvrti
 void vri_save_day( array <vri> & vlist, struct dvrtime * day ) 
 {
 	char * logdisk ;
+	if( day->year < build_year )
+		return ;
 	
 	logdisk = disk_getdisk( 0 );
 	if( logdisk != NULL ) {
@@ -222,22 +224,25 @@ char * vri_lookup( struct dvrtime * dvrt )
 }
 	
 
-// tag vri
+// tag vri, (now and modify)
 // parameter
 //   buf : contain all vri fields
-void vri_tag( char * buf, int tagsize )
+void vri_log( char * buf )
 {
 	int lh ;
 	int i;
 	
 	vri v ;
-	v.set( buf, tagsize );
+	v.set( buf );
 
 	lh = strlen((char *)g_hostname);
 	struct dvrtime dvrt ;
 	memset( &dvrt, 0, sizeof(dvrt));
 	if( sscanf( buf+lh, "-%2d%2d%2d", &(dvrt.year), &(dvrt.month), &(dvrt.day) ) == 3 ) {
 		dvrt.year+=2000 ;
+		if( dvrt.year < 2010 ) {
+			return ;
+		}
 		array <vri> vlist ;
 		vri_list_day( vlist, &dvrt );
 		
@@ -259,13 +264,4 @@ void vri_tag( char * buf, int tagsize )
 		vri_save_day( vlist, &dvrt );
 	}
 }
-
-// log a new vri,
-// parameter:
-//   vri: contain vri id only
-void vri_log( char * buf )
-{
-	vri_tag( buf, strlen(buf) ) ;
-}
-
 

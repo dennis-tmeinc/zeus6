@@ -23,6 +23,7 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <sys/reboot.h>
+#include <sys/time.h>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
@@ -37,7 +38,7 @@
 #include "../cfg.h"
 
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 #include "diomap.h"
 
 #include "serial.h"
@@ -48,7 +49,6 @@ int standbyhdoff = 0;
 int usewatchdog = 0;
 int tab102b_enable;
 int buzzer_enable;
-int wifi_enable_ex = 0;
 int wifi_poweron = 0;
 int motion_control;
 int gforcechange = 0;
@@ -80,16 +80,12 @@ unsigned int gHardDiskon = 0;
 #define HDLED (0x10)
 #define FLASHLED (0x20)
 //#define  MCU_DEBUG
-#define DAEMON
 
 // input pin maping
 #define HDINSERTED (0x40)
 #define HDKEYLOCK (0x80)
 #define RECVBUFSIZE (100)
 
-int mTempState = 0;
-int mTempPreState = 0;
-int mStateNum = 0;
 void mcu_event_remove();
 
 unsigned int input_map_table[MCU_INPUTNUM] =
@@ -114,21 +110,6 @@ int hdinserted = 0;
 
 #define PANELLEDNUM (3)
 
-struct baud_table_t
-{
-	speed_t baudv;
-	int baudrate;
-} baud_table[7] = {
-	{B2400, 2400},
-	{B4800, 4800},
-	{B9600, 9600},
-	{B19200, 19200},
-	{B38400, 38400},
-	{B57600, 57600},
-	{B115200, 115200}};
-
-struct dio_mmap *p_dio_mmap = NULL;
-
 char dvrcurdisk[128] = "/var/dvr/dvrcurdisk";
 char dvriomap[256] = "/var/dvr/dvriomap";
 const char *pidfile = "/var/dvr/ioprocess.pid";
@@ -142,9 +123,7 @@ char logfile[128] = "dvrlog.txt";
 string temp_logfile;
 int watchdogenabled = 0;
 int watchdogtimeout = 30;
-int watchdogtimeset = 30;
 
-int gpsvalid = 0;
 int gforce_log_enable = 0;
 int output_inverted = 0;
 unsigned int iosensor_inverted = 0;
@@ -154,9 +133,6 @@ unsigned int panelled = 0;
 // static current device power bit map
 unsigned int devicepower = DEVPOWER_FULL;
 
-pid_t pid_smartftp = 0;
-pid_t pid_tab102 = 0;
-
 #define WRITE_INPUT 0
 
 int app_mode = APPMODE_QUIT;
@@ -164,31 +140,15 @@ static int app_mode_r = APPMODE_QUIT;
 static unsigned int modeendtime = 0;
 static unsigned int runtime;
 
-void set_app_mode(int mode, int modetimeout)
-{
-	modeendtime = runtime + modetimeout * 1000; //  in seconds
-	app_mode = mode;
-	p_dio_mmap->current_mode = mode;
-	if (mode == APPMODE_RUN)
-		p_dio_mmap->devicepower = DEVPOWER_FULL; // turn on all devices power
-}
-
-int mode_timeout()
-{
-	return runtime > modeendtime;
-}
-
 void sig_handler(int signum)
 {
-	if (signum == SIGUSR2)
-	{
-		app_mode_r = app_mode;
-		set_app_mode(APPMODE_REINITAPP, 0);
-	}
-	else
-	{
-		set_app_mode(APPMODE_QUIT, 0);
-	}
+    if (signum == SIGTERM || signum == SIGINT) {
+        app_mode_r = app_mode;
+        app_mode = APPMODE_QUIT;
+    } else if (signum == SIGUSR2) {
+        app_mode_r = app_mode;
+        app_mode = APPMODE_REINITAPP;
+    }
 }
 
 // return bcd value
@@ -308,12 +268,12 @@ int getstandbytime()
 	return v;
 }
 
-static time_t starttime = 0;
-void initruntime()
+static time_t _starttime = 0;
+static void initruntime()
 {
 	struct timespec tp;
 	clock_gettime(CLOCK_MONOTONIC, &tp);
-	starttime = tp.tv_sec;
+	_starttime = tp.tv_sec;
 }
 
 // return runtime in milliseconds
@@ -321,19 +281,77 @@ unsigned int getruntime()
 {
 	struct timespec tp;
 	clock_gettime(CLOCK_MONOTONIC, &tp);
-	return (unsigned int)(tp.tv_sec - starttime) * 1000 + tp.tv_nsec / 1000000;
+	return (unsigned int)(tp.tv_sec - _starttime) * 1000 + tp.tv_nsec / 1000000;
 }
 
-void dio_lock()
+// check if glog is started , if not start run glog
+void pause_glog()
 {
-	while( __sync_lock_test_and_set( &(p_dio_mmap->lock), 1) ) {
-		sched_yield(); // or sleep(0)
+	if (p_dio_mmap->glogpid != 0) {
+		// put glog into idling
+		kill(p_dio_mmap->glogpid, SIGUSR1);
+		dvr_log("gps log paused.");
 	}
 }
 
-void dio_unlock()
+// check if glog is started , if not start run glog
+void resume_glog()
 {
-	__sync_lock_release( &(p_dio_mmap->lock));
+	const char appglog[]="zdaemon glog" ;
+	if (p_dio_mmap->glogpid != 0) {
+		if( kill(p_dio_mmap->glogpid, SIGCONT) == 0 )
+			return ;
+	}
+	// start glog
+	system(appglog);
+	dvr_log("gps log started");
+}
+
+// put tab102 into idling
+void pause_tab102() 
+{
+/*	if (p_dio_mmap->tab102pid != 0) {
+		// put tab102 into idling
+		kill(p_dio_mmap->tab102pid, SIGUSR1);
+		dvr_log( "tab102 paused.");
+	}
+*/	
+}
+
+// resume tab102 
+void resume_tab102()
+{
+	if (p_dio_mmap->tab102pid != 0) {
+		if( kill(p_dio_mmap->tab102pid, SIGCONT )== 0 )
+			return ;
+	}
+	const char app[]="zdaemon tab102" ;
+	system(app);
+	dvr_log("tab102 started");
+}
+
+void set_app_mode(int mode, int modetimeout)
+{
+	modeendtime = runtime + modetimeout * 1000; //  in seconds
+	app_mode = mode;
+	p_dio_mmap->current_mode = mode;
+	if (mode == APPMODE_RUN) {
+		p_dio_mmap->devicepower = DEVPOWER_FULL; // turn on all devices power
+		p_dio_mmap->pwii_output &= ~PWII_COVERT_MODE ;		// clear COVERT mode, on enter run mode
+		p_dio_mmap->nodiskcheck = 0;			// enable disk check again
+		if (p_dio_mmap->dvrpid > 0 &&
+			(p_dio_mmap->dvrcmd == 0))
+		{
+			p_dio_mmap->dvrcmd = 4; // restart recording
+		}
+		resume_glog();
+		resume_tab102();
+	}
+}
+
+int mode_timeout()
+{
+	return runtime > modeendtime;
 }
 
 // set onboard rtc
@@ -696,17 +714,14 @@ int mcu_oninput(char *ibuf)
 		break;
 
 	case '\x08': // ignition off event
-		mcu_response(ibuf, 2, 0, 0);
-
+		mcu_response(ibuf, 2, 0, 30);
 		mcupowerdelaytime = 0;
 		p_dio_mmap->poweroff = 1; // send power off message to DVR
 		break;
 
 	case '\x09': // ignition on event
 		mcu_response(ibuf, 1, watchdogenabled);
-
 		p_dio_mmap->poweroff = 0; // send power on message to DVR
-
 		break;
 
 	case '\x40': // Accelerometer data
@@ -744,6 +759,7 @@ int mcu_oninput(char *ibuf)
 			   gbusdown);
 #endif
 		// save to log
+		/*
 		if (p_dio_mmap->gforce_log0 == 0)
 		{
 			p_dio_mmap->gforce_right_0 = gbusright;
@@ -764,6 +780,12 @@ int mcu_oninput(char *ibuf)
 				p_dio_mmap->gforce_log1 = 1;
 			}
 		}
+		*/
+		p_dio_mmap->gforce_right_d = gbusright;
+		p_dio_mmap->gforce_forward_d = gbusforward;
+		p_dio_mmap->gforce_down_d = gbusdown;
+		gforcechange = 1;
+		p_dio_mmap->gforce_serial++;
 
 		break;
 	case '\x1e':
@@ -778,6 +800,7 @@ int mcu_oninput(char *ibuf)
 							(ibuf[9] << 8) | ibuf[10],
 							&gbusforward, &gbusright, &gbusdown);
 			// save to log
+			/*
 			if (p_dio_mmap->gforce_log0 == 0)
 			{
 				p_dio_mmap->gforce_right_0 = gbusright;
@@ -798,6 +821,7 @@ int mcu_oninput(char *ibuf)
 					p_dio_mmap->gforce_log1 = 1;
 				}
 			}
+			*/
 
 			//if(check_trigger_event(gbusforward,gbusright,gbusdown)){
 			//    p_dio_mmap->mcu_cmd=7;
@@ -807,7 +831,7 @@ int mcu_oninput(char *ibuf)
 			p_dio_mmap->gforce_forward_d = gbusforward;
 			p_dio_mmap->gforce_down_d = gbusdown;
 			gforcechange = 1;
-			p_dio_mmap->gforce_changed = 1;
+			p_dio_mmap->gforce_serial++;
 			gforce_start = getruntime();
 		}
 		break;
@@ -1161,11 +1185,11 @@ int mcu_pwii_output()
 	{
 		if (s_pwii_output & PWII_DUALCAM_LED1)
 		{
-			dvr_log("Dualcam REC LED on.\n");
+			dvr_log("Dualcam REC LED on.");
 		}
 		else
 		{
-			dvr_log("Dualcam REC LED off.\n");
+			dvr_log("Dualcam REC LED off.");
 		}
 	}
 	return 0;
@@ -1444,7 +1468,7 @@ void time_syncgps()
 	{
 		gpstime = (time_t)p_dio_mmap->gps_gpstime;
 		gmtime_r(&gpstime, &ut);
-		if (ut.tm_year > 100 && ut.tm_year < 130)
+		if (ut.tm_year > 110 && ut.tm_year < 150)	// 2010 ~ 2050
 		{
 			gettimeofday(&tv, NULL);
 			diff = (int)gpstime - (int)tv.tv_sec;
@@ -1463,6 +1487,7 @@ void time_syncgps()
 	}
 }
 #endif
+
 void time_syncmcu()
 {
 	int diff;
@@ -1570,109 +1595,14 @@ void buzzer_run(int runtime)
 
 int smartftp_retry;
 int smartftp_disable;
-int smartftp_reporterror;
 
-static int readWifiDeviceName(char *dev, int bufsize)
+static pid_t pid_tab101 = 0;
+void tab101_start()
 {
-	char buf[256];
-	FILE *fp;
-	fp = fopen("/proc/net/wireless", "r");
-	if (fp != NULL)
-	{
-		int line = 0;
-		while (fgets(buf, sizeof(buf), fp) != NULL)
-		{
-			line++;
-			if (line < 3)
-				continue;
-
-			char *ptr;
-			ptr = strchr(buf, ':');
-			if (ptr)
-			{
-				*ptr = '\0';
-				/* remove leading spaces */
-				ptr = buf;
-				while (*ptr == 0x20)
-				{
-					ptr++;
-				}
-				if (dev)
-					strncpy(dev, ptr, bufsize);
-				fclose(fp);
-				return 0;
-			}
-		}
-		fclose(fp);
-	}
-
-	return 1;
-}
-
-void tab102_reset()
-{
-	int pid = fork();
-	if (pid == 0)
-	{
-		dvr_log("make tab102 reset");
-		execl("/mnt/nand/dvr/tab102", "/mnt/nand/dvr/tab102", "-reset",
-			  NULL);
-		dvr_log("make tab102 reset failed");
-	}
-	else if (pid < 0)
-	{
-		dvr_log("make tab102 reset failed");
-	}
-}
-
-void tab102_ready()
-{
-	int pid = fork();
-	if (pid == 0)
-	{
-		dvr_log("make tab102 boot ready");
-		execl("/mnt/nand/dvr/tab102", "/mnt/nand/dvr/tab102", "-rtc",
-			  NULL);
-		dvr_log("make tab102 boot ready failed");
-	}
-	else if (pid < 0)
-	{
-		dvr_log("make tab102 boot ready failed");
-	}
-}
-
-void tab102_settrigger()
-{
-	FILE *fp;
-	fp = fopen("/var/dvr/triggerset", "w");
-	if (fp)
-	{
-		fprintf(fp, "trigger");
-		fclose(fp);
-	}
-	return;
-}
-
-void tab102_setup()
-{
-	int pid = fork();
-	if (pid == 0)
-	{
-		execl("/mnt/nand/dvr/tab102", "/mnt/nand/dvr/tab102", "-st",
-			  NULL);
-		dvr_log("set up tab102b failed");
-	}
-	else if (pid < 0)
-	{
-		dvr_log("set up tab102b failed");
-	}
-}
-
-void tab102_start()
-{
+	/*
 	dvr_log("Start Tab102 downloading.");
-	pid_tab102 = fork();
-	if (pid_tab102 == 0)
+	pid_tab101 = fork();
+	if (pid_tab101 == 0)
 	{ // child process
 		execl("/mnt/nand/dvr/tab101check", "/mnt/nand/dvr/tab101check",
 			  NULL);
@@ -1680,11 +1610,12 @@ void tab102_start()
 		dvr_log("Start Tab102 failed!");
 		exit(101); // error happened.
 	}
-	else if (pid_tab102 < 0)
+	else if (pid_tab101 < 0)
 	{
-		pid_tab102 = 0;
+		pid_tab101 = 0;
 		dvr_log("Start Tab102 failed!");
 	}
+	*/
 }
 
 /*
@@ -1692,25 +1623,24 @@ void tab102_start()
  *          0 - tab102 is still running
  *          1 - tab102 terminated or not started at all or error happened
  */
-int tab102_wait()
+int tab101_wait()
 {
-	int tab102_status = 0;
+	int tab101_status = 0;
 	pid_t id;
 	int exitcode = -1;
-	if (pid_tab102 > 0)
+	if (pid_tab101 > 0)
 	{
-		id = waitpid(pid_tab102, &tab102_status, WNOHANG);
-		if (id == pid_tab102)
+		id = waitpid(pid_tab101, &tab101_status, WNOHANG);
+		if (id == pid_tab101)
 		{
-			pid_tab102 = 0;
-			if (WIFEXITED(tab102_status))
+			if (WIFEXITED(tab101_status))
 			{
-				exitcode = WEXITSTATUS(tab102_status);
+				exitcode = WEXITSTATUS(tab101_status);
 				dvr_log("\"tab102\" exit. (code:%d)", exitcode);
 			}
-			else if (WIFSIGNALED(tab102_status))
+			else if (WIFSIGNALED(tab101_status))
 			{
-				dvr_log("\"tab102\" killed by signal %d.", WTERMSIG(tab102_status));
+				dvr_log("\"tab102\" killed by signal %d.", WTERMSIG(tab101_status));
 			}
 			else
 			{
@@ -1727,19 +1657,34 @@ int tab102_wait()
 			dvr_log("\"tab102\" waitpid error.");
 		}
 	}
+	pid_tab101 = 0;
 	return 1;
 }
 
 static char smartftp_dev[64];
-
+static pid_t pid_smartftp = 0;
 void smartftp_start()
 {
+	if( pid_smartftp > 0 )
+		return ;
+
 	int ret;
+	const char * smartftp_reporterror;
+
+	if ((p_dio_mmap->dvrstatus & (DVR_VIDEOLOST | DVR_ERROR)) == 0)
+	{
+		smartftp_reporterror = "N";
+	}
+	else
+	{
+		smartftp_reporterror = "Y";
+	}
 
 	dvr_log("Start smart server uploading.");
 	pid_smartftp = fork();
 	if (pid_smartftp == 0)
-	{ // child process
+	{ 
+		// child process
 		char hostname[128];
 		// char mountdir[250] ;
 
@@ -1758,7 +1703,7 @@ void smartftp_start()
 					 "247ftp",
 					 "247SECURITY",
 					 "0",
-					 smartftp_reporterror ? "Y" : "N",
+					 smartftp_reporterror,
 					 getenv("TZ"),
 					 NULL);
 
@@ -1813,6 +1758,7 @@ int smartftp_wait()
 		}
 		else if (id == 0)
 		{
+			// not yet exit
 			return 0;
 		}
 		else
@@ -1821,6 +1767,7 @@ int smartftp_wait()
 			dvr_log("\"smartftp\" waitpid error.");
 		}
 	}
+	pid_smartftp = 0;
 
 	return 1;
 }
@@ -1832,18 +1779,6 @@ void smartftp_kill()
 	{
 		kill(pid_smartftp, SIGTERM);
 		dvr_log("Kill \"smartftp\".");
-		pid_smartftp = 0;
-	}
-}
-
-// Kill tab102 in case power turn on
-void tab102_kill()
-{
-	if (pid_tab102 > 0)
-	{
-		kill(pid_tab102, SIGTERM);
-		dvr_log("Kill \"tab102\".");
-		pid_tab102 = 0;
 	}
 }
 
@@ -1865,64 +1800,6 @@ float cpuusage()
 		s_idletime = idletime;
 	}
 	return usage;
-}
-
-void reloadconfig()
-{
-	char *p;
-	config dvrconfig(dvrconfigfile);
-	string v;
-	int i;
-
-	v = dvrconfig.getvalue("system", "logfile");
-	if (v.length() > 0)
-	{
-		strncpy(logfile, v.getstring(), sizeof(logfile));
-	}
-	v = dvrconfig.getvalue("system", "temp_logfile");
-	if (v.length() > 0)
-	{
-		temp_logfile = v;
-		//  strncpy( temp_logfile, v.getstring(), sizeof(temp_logfile));
-	}
-
-	v = dvrconfig.getvalue("system", "currentdisk");
-	if (v.length() > 0)
-	{
-		strncpy(dvrcurdisk, v.getstring(), sizeof(dvrcurdisk));
-	}
-
-	// initialize shared memory
-	p_dio_mmap->inputnum = dvrconfig.getvalueint("io", "inputnum");
-	if (p_dio_mmap->inputnum <= 0 || p_dio_mmap->inputnum > 32)
-		p_dio_mmap->inputnum = MCU_INPUTNUM;
-	p_dio_mmap->outputnum = dvrconfig.getvalueint("io", "outputnum");
-	if (p_dio_mmap->outputnum <= 0 || p_dio_mmap->outputnum > 32)
-		p_dio_mmap->outputnum = MCU_OUTPUTNUM;
-
-	output_inverted = 0;
-
-	for (i = 0; i < 32; i++)
-	{
-		char outinvkey[50];
-		sprintf(outinvkey, "output%d_inverted", i + 1);
-		if (dvrconfig.getvalueint("io", outinvkey))
-		{
-			output_inverted |= (1 << i);
-		}
-	}
-
-	// smartftp variable
-	smartftp_disable = dvrconfig.getvalueint("system", "smartftp_disable");
-
-	tab102b_enable = dvrconfig.getvalueint("glog", "tab102b_enable");
-	buzzer_enable = dvrconfig.getvalueint("io", "buzzer_enable");
-	wifi_enable_ex = dvrconfig.getvalueint("system", "ex_wifi_enable");
-	wifi_poweron = dvrconfig.getvalueint("network", "wifi_poweron");
-	// gforce sensor setup
-
-	// gforce_log_enable = dvrconfig.getvalueint( "glog", "gforce_log_enable");
-	gforce_log_enable = tab102b_enable;
 }
 
 // check battery voltage
@@ -1951,6 +1828,43 @@ void battery_check()
 
 		p_dio_mmap->battery_state = battery_state; // This value is never be valid!!!
 		p_dio_mmap->battery_voltage = fvoltage;
+	}
+}
+
+// mcu startup process
+int mcu_start()
+{
+	// start mcu (power on processor)
+	int mD1;
+	mcu_clear(10000);
+
+	if (mcu_bootupready(&mD1))
+	{
+		// sync cpu time from mcu
+		time_syncmcu();
+
+		mcu_readcode();
+
+		// get MCU version
+		char mcu_firmware_version[80];
+		if (mcu_version(mcu_firmware_version))
+		{
+			dvr_log("MCU version: %s", mcu_firmware_version);
+			FILE *mcuversionfile = fopen("/var/dvr/mcuversion", "w");
+			if (mcuversionfile)
+			{
+				fprintf(mcuversionfile, "%s", mcu_firmware_version);
+				fclose(mcuversionfile);
+			}
+		}
+		return 1;
+	}
+	else
+	{
+		set_app_mode(APPMODE_QUIT, 0);
+		dvr_log1("MCU failed,eagle reboot.");
+		// system("/bin/reboot");
+		return 0;
 	}
 }
 
@@ -1994,6 +1908,7 @@ int appinit()
 	}
 
 	tzset();
+	
 	cap_ch = dvrconfig.getvalueint("system", "totalcamera");
 	gRecordMode = 4;
 	for (i = 0; i < cap_ch; ++i)
@@ -2035,50 +1950,40 @@ int appinit()
 		strncpy(dvrcurdisk, v.getstring(), sizeof(dvrcurdisk));
 	}
 
-	v = dvrconfig.getvalue("system", "iomapfile");
-	char *iomapfile = v.getstring();
-	if (iomapfile && strlen(iomapfile) > 0)
-	{
-		strncpy(dvriomap, iomapfile, sizeof(dvriomap));
-	}
-	fd = open(dvriomap, O_RDWR | O_CREAT, S_IRWXU);
-	if (fd <= 0)
-	{
-		printf("Can't create io map file!\n");
-		return 0;
-	}
-	ftruncate(fd, sizeof(struct dio_mmap));
-	p = (char *)mmap(NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd); // fd no more needed
-	if (p == (char *)-1 || p == NULL)
-	{
-		printf("IO memory map failed!");
-		return 0;
-	}
-	p_dio_mmap = (struct dio_mmap *)p;
+	if( p_dio_mmap == NULL ) {
+		// first time init
+		dio_mmap() ;
 
-	if (p_dio_mmap->usage <= 0)
-	{
-		memset(p_dio_mmap, 0, sizeof(struct dio_mmap));
-	}
-
-	p_dio_mmap->usage++; // add one usage
-
-	if (p_dio_mmap->iopid > 0)
-	{ // another ioprocess running?
-		pid_t pid = p_dio_mmap->iopid;
-		// kill it
-		if (kill(pid, SIGTERM) == 0)
-		{
-			// wait for it to quit
-			waitpid(pid, NULL, 0);
-			sync();
-			sleep(2);
+		if( p_dio_mmap == NULL) {		
+			printf("Can't create io map!\n");
+			return 0;
 		}
-		else
+
+		if (p_dio_mmap->iopid > 0)
 		{
-			sleep(5);
+			// another ioprocess running? kill it.
+			if (kill(p_dio_mmap->iopid, SIGTERM) == 0)
+			{
+				// wait until old io exit
+				for(i=0;i<100;i++) {
+					if( p_dio_mmap->iopid == 0 ) 
+						break;
+					usleep(10000);
+				}
+			}
 		}
+		else {
+			memset(p_dio_mmap, 0, sizeof(struct dio_mmap));
+		}
+		p_dio_mmap->iopid = getpid();
+		p_dio_mmap->usage++; // add one usage
+
+		// initialize timer
+		initruntime();
+
+		// also do init mcu port only once!!
+		// initilize mcu (serial) port
+		mcu_init(dvrconfig);
 	}
 
 	// initialize shared memory
@@ -2095,8 +2000,6 @@ int appinit()
 
 	p_dio_mmap->panel_led = 0;
 	p_dio_mmap->devicepower = DEVPOWER_FULL; // assume all device is power on
-
-	p_dio_mmap->iopid = getpid(); // io process pid
 
 	output_inverted = 0;
 
@@ -2133,44 +2036,8 @@ int appinit()
 		iosensor_inverted |= 0x01;
 	}
 
-	// check if sync rtc wanted
-
-	g_syncrtc = dvrconfig.getvalueint("io", "syncrtc");
-
-	// initilize mcu (serial) port
-	mcu_init(dvrconfig);
-
 	// smartftp variable
 	smartftp_disable = dvrconfig.getvalueint("system", "smartftp_disable");
-
-	// initialize mcu (power processor)
-	int mD1;
-	if (mcu_bootupready(&mD1))
-	{
-		//    dvr_log1("MCU ready.");
-		mcu_clear(100000);
-		mcu_readcode();
-
-		// get MCU version
-		char mcu_firmware_version[80];
-		if (mcu_version(mcu_firmware_version))
-		{
-			dvr_log("MCU version: %s", mcu_firmware_version);
-			FILE *mcuversionfile = fopen("/var/dvr/mcuversion", "w");
-			if (mcuversionfile)
-			{
-				fprintf(mcuversionfile, "%s", mcu_firmware_version);
-				fclose(mcuversionfile);
-			}
-		}
-	}
-	else
-	{
-		set_app_mode(APPMODE_QUIT, 0);
-		dvr_log1("MCU failed,eagle reboot.");
-		// system("/bin/reboot");
-		return 0;
-	}
 
 #ifdef APP_PWZ5
 	i = dvrconfig.getvalueint("system", "pan_zoom_camera");
@@ -2184,9 +2051,10 @@ int appinit()
 	//    mcu_initsensor2(dvrconfig.getvalueint( "sensor2", "inverted" ));
 	// #endif
 
+	// check if sync rtc wanted
+	g_syncrtc = dvrconfig.getvalueint("io", "syncrtc");
 	if (g_syncrtc)
 	{
-		printf("start syc rtc\n");
 		mcu_rtctosys();
 	}
 
@@ -2206,7 +2074,6 @@ int appinit()
 
 	tab102b_enable = dvrconfig.getvalueint("glog", "tab102b_enable");
 	buzzer_enable = dvrconfig.getvalueint("io", "buzzer_enable");
-	wifi_enable_ex = dvrconfig.getvalueint("system", "ex_wifi_enable");
 	wifi_poweron = dvrconfig.getvalueint("network", "wifi_poweron");
 	gHBDRecording = dvrconfig.getvalueint("system", "hbdrecording");
 	// gforce sensor setup
@@ -2220,14 +2087,6 @@ int appinit()
 	else
 	{
 		strcpy(smartftp_dev, "eth0");
-		if (!wifi_enable_ex)
-		{
-			if (readWifiDeviceName(smartftp_dev, sizeof(smartftp_dev)))
-			{
-				//using fixed wifi
-				strcpy(smartftp_dev, "wlan0");
-			}
-		}
 	}
 
 	//gforce_log_enable = dvrconfig.getvalueint( "glog", "gforce_log_enable");
@@ -2291,8 +2150,6 @@ int appinit()
 			break;
 		}
 	}
-	p_dio_mmap->gforce_log0 = 0;
-	p_dio_mmap->gforce_log1 = 0;
 
 	g_sensor_trigger_forward = 0.5;
 	v = dvrconfig.getvalue("io", "gsensor_forward_trigger");
@@ -2423,8 +2280,6 @@ int appinit()
 	if (watchdogtimeout > 200)
 		watchdogtimeout = 200;
 
-	watchdogtimeset = watchdogtimeout;
-
 	battery_low = 7.4;
 	v = dvrconfig.getvalue("system", "battery_low");
 	if (!v.isempty())
@@ -2441,386 +2296,22 @@ int appinit()
 		fclose(pidf);
 	}
 
-	// initialize timer
-	initruntime();
 	p_dio_mmap->fileclosed = 0;
-	p_dio_mmap->gforce_changed = 0;
 
 	return 1;
-}
-
-void re_appinit()
-{
-	FILE *pidf;
-	int fd;
-	char *p;
-	config dvrconfig(dvrconfigfile);
-	string v;
-	int i;
-	int cap_ch;
-	// setup time zone
-	string tz;
-	string tzi;
-	tz = dvrconfig.getvalue("system", "timezone");
-	if (tz.length() > 0)
-	{
-		tzi = dvrconfig.getvalue("timezones", tz.getstring());
-		if (tzi.length() > 0)
-		{
-			p = strchr(tzi.getstring(), ' ');
-			if (p)
-			{
-				*p = 0;
-			}
-			p = strchr(tzi.getstring(), '\t');
-			if (p)
-			{
-				*p = 0;
-			}
-			setenv("TZ", tzi.getstring(), 1);
-		}
-		else
-		{
-			setenv("TZ", tz.getstring(), 1);
-		}
-	}
-
-	cap_ch = dvrconfig.getvalueint("system", "totalcamera");
-	gRecordMode = 4;
-	for (i = 0; i < cap_ch; ++i)
-	{
-		char section[20];
-		int mRecMode = 4;
-		int enabled = 0;
-		sprintf(section, "camera%d", i + 1);
-		enabled = dvrconfig.getvalueint(section, "enable");
-		if (enabled)
-		{
-			mRecMode = dvrconfig.getvalueint(section, "recordmode");
-			if (mRecMode == 0)
-			{
-				gRecordMode = 0;
-				break;
-			}
-		}
-	}
-	v = dvrconfig.getvalue("system", "logfile");
-	if (v.length() > 0)
-	{
-		strncpy(logfile, v.getstring(), sizeof(logfile));
-	}
-	v = dvrconfig.getvalue("system", "temp_logfile");
-	if (v.length() > 0)
-	{
-		temp_logfile = v;
-		//  strncpy( temp_logfile, v.getstring(), sizeof(temp_logfile));
-	}
-
-	v = dvrconfig.getvalue("system", "currentdisk");
-	if (v.length() > 0)
-	{
-		strncpy(dvrcurdisk, v.getstring(), sizeof(dvrcurdisk));
-	}
-
-	// initialize shared memory
-	p_dio_mmap->inputnum = dvrconfig.getvalueint("io", "inputnum");
-	if (p_dio_mmap->inputnum <= 0 || p_dio_mmap->inputnum > 32)
-		p_dio_mmap->inputnum = MCU_INPUTNUM;
-	p_dio_mmap->outputnum = dvrconfig.getvalueint("io", "outputnum");
-	if (p_dio_mmap->outputnum <= 0 || p_dio_mmap->outputnum > 32)
-		p_dio_mmap->outputnum = MCU_INPUTNUM;
-
-	motion_control = dvrconfig.getvalueint("io", "sensor_powercontrol");
-
-	output_inverted = 0;
-
-	for (i = 0; i < 32; i++)
-	{
-		char outinvkey[50];
-		sprintf(outinvkey, "output%d_inverted", i + 1);
-		if (dvrconfig.getvalueint("io", outinvkey))
-		{
-			output_inverted |= (1 << i);
-		}
-	}
-
-	iosensor_inverted = 0;
-	for (i = 1; i < p_dio_mmap->inputnum; ++i)
-	{
-		char section[20];
-		int value;
-		sprintf(section, "sensor%d", i + 1);
-		value = dvrconfig.getvalueint(section, "inverted");
-		//printf("sensor%d:%d\n",i,value);
-		if (value)
-		{
-			iosensor_inverted |= (0x01 << i);
-		}
-	}
-	for (i = p_dio_mmap->inputnum; i < 16; ++i)
-	{
-		iosensor_inverted |= (0x01 << i);
-	}
-
-	if (motion_control)
-	{
-		iosensor_inverted |= 0x01;
-	}
-
-	// smartftp variable
-	smartftp_disable = dvrconfig.getvalueint("system", "smartftp_disable");
-
-	if (mcu_iosensorrequest())
-	{
-		mcu_iosensor_send();
-	}
-
-	tab102b_enable = dvrconfig.getvalueint("glog", "tab102b_enable");
-	buzzer_enable = dvrconfig.getvalueint("io", "buzzer_enable");
-	wifi_enable_ex = dvrconfig.getvalueint("system", "ex_wifi_enable");
-	wifi_poweron = dvrconfig.getvalueint("network", "wifi_poweron");
-	gHBDRecording = dvrconfig.getvalueint("system", "hbdrecording");
-
-	// external smart upload device name
-	v = dvrconfig.getvalue("network", "smartftp_dev");
-	if (v.length() > 0)
-	{
-		strncpy(smartftp_dev, v.getstring(), sizeof(smartftp_dev));
-	}
-	else
-	{
-		strcpy(smartftp_dev, "wlan0");
-	}
-
-	// gforce sensor setup
-
-	//gforce_log_enable = dvrconfig.getvalueint( "glog", "gforce_log_enable");
-	gforce_log_enable = tab102b_enable;
-#if 0
-	// get gsensor direction setup
-
-	int dforward, dupward;
-	dforward = dvrconfig.getvalueint("io", "gsensor_forward");
-	dupward = dvrconfig.getvalueint("io", "gsensor_upward");
-	gsensor_direction = DEFAULT_DIRECTION;
-	for (i = 0; i < 24; i++) {
-		if (dforward == direction_table[i][0] && dupward == direction_table[i][1]) {
-			gsensor_direction = i;
-			break;
-		}
-	}
-	p_dio_mmap->gforce_log0 = 0;
-	p_dio_mmap->gforce_log1 = 0;
-
-	g_sensor_trigger_forward = 0.5;
-	v = dvrconfig.getvalue("io", "gsensor_forward_trigger");
-	if (v.length() > 0) {
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_forward);
-	}
-	g_sensor_trigger_backward = -0.5;
-	v = dvrconfig.getvalue("io", "gsensor_backward_trigger");
-	if (v.length() > 0) {
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_backward);
-	}
-	g_sensor_trigger_right = 0.5;
-	v = dvrconfig.getvalue("io", "gsensor_right_trigger");
-	if (v.length() > 0) {
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_right);
-	}
-	g_sensor_trigger_left = -0.5;
-	v = dvrconfig.getvalue("io", "gsensor_left_trigger");
-	if (v.length() > 0) {
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_left);
-	}
-	g_sensor_trigger_down = 1.0 + 2.5;
-	v = dvrconfig.getvalue("io", "gsensor_down_trigger");
-	if (v.length() > 0) {
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_down);
-	}
-	g_sensor_trigger_up = 1.0 - 2.5;
-	v = dvrconfig.getvalue("io", "gsensor_up_trigger");
-	if (v.length() > 0) {
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_up);
-	}
-#else
-	int dforward, dupward;
-	dforward = dvrconfig.getvalueint("io", "gsensor_forward");
-	dupward = dvrconfig.getvalueint("io", "gsensor_upward");
-	gsensor_direction = DEFAULT_DIRECTION;
-	for (i = 0; i < 24; i++)
-	{
-		if (dforward == direction_table[i][0] && dupward == direction_table[i][1])
-		{
-			gsensor_direction = i;
-			break;
-		}
-	}
-	p_dio_mmap->gforce_log0 = 0;
-	p_dio_mmap->gforce_log1 = 0;
-
-	g_sensor_trigger_forward = 0.5;
-	v = dvrconfig.getvalue("io", "gsensor_forward_trigger");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_forward);
-	}
-	g_sensor_trigger_backward = -0.5;
-	v = dvrconfig.getvalue("io", "gsensor_backward_trigger");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_backward);
-	}
-	g_sensor_trigger_right = 0.5;
-	v = dvrconfig.getvalue("io", "gsensor_right_trigger");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_right);
-	}
-	g_sensor_trigger_left = -0.5;
-	v = dvrconfig.getvalue("io", "gsensor_left_trigger");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_left);
-	}
-	g_sensor_trigger_down = 1.0 + 2.5;
-	v = dvrconfig.getvalue("io", "gsensor_down_trigger");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_down);
-	}
-	g_sensor_trigger_up = 1.0 - 2.5;
-	v = dvrconfig.getvalue("io", "gsensor_up_trigger");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_trigger_up);
-	}
-
-	g_sensor_base_forward = 0.2;
-	v = dvrconfig.getvalue("io", "gsensor_forward_base");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_base_forward);
-	}
-	g_sensor_base_backward = -0.2;
-	v = dvrconfig.getvalue("io", "gsensor_backward_base");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_base_backward);
-	}
-	g_sensor_base_right = 0.2;
-	v = dvrconfig.getvalue("io", "gsensor_right_base");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_base_right);
-	}
-	g_sensor_base_left = -0.2;
-	v = dvrconfig.getvalue("io", "gsensor_left_base");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_base_left);
-	}
-	g_sensor_base_down = 1.0 + 2.0;
-	v = dvrconfig.getvalue("io", "gsensor_down_base");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_base_down);
-	}
-	g_sensor_base_up = 1.0 - 2.0;
-	v = dvrconfig.getvalue("io", "gsensor_up_base");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_base_up);
-	}
-
-	g_sensor_crash_forward = 3.0;
-	v = dvrconfig.getvalue("io", "gsensor_forward_crash");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_crash_forward);
-	}
-	g_sensor_crash_backward = -3.0;
-	v = dvrconfig.getvalue("io", "gsensor_backward_crash");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_crash_backward);
-	}
-	g_sensor_crash_right = 3.0;
-	v = dvrconfig.getvalue("io", "gsensor_right_crash");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_crash_right);
-	}
-	g_sensor_crash_left = -3.0;
-	v = dvrconfig.getvalue("io", "gsensor_left_crash");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_crash_left);
-	}
-	g_sensor_crash_down = 1.0 + 5.0;
-	v = dvrconfig.getvalue("io", "gsensor_down_crash");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_crash_down);
-	}
-	g_sensor_crash_up = 1.0 - 5.0;
-	v = dvrconfig.getvalue("io", "gsensor_up_crash");
-	if (v.length() > 0)
-	{
-		sscanf(v.getstring(), "%f", &g_sensor_crash_up);
-	}
-#endif
-
-	usewatchdog = dvrconfig.getvalueint("io", "usewatchdog");
-	watchdogtimeout = dvrconfig.getvalueint("io", "watchdogtimeout");
-	if (watchdogtimeout < 10)
-		watchdogtimeout = 10;
-	if (watchdogtimeout > 200)
-		watchdogtimeout = 200;
-	watchdogtimeset = watchdogtimeout;
-
-	battery_low = 7.4;
-	v = dvrconfig.getvalue("system", "battery_low");
-	if (!v.isempty())
-	{
-		sscanf((char *)v, "%f", &battery_low);
-	}
-	if (battery_low < 7.2)
-		battery_low = 7.2;
-
-	// initialize timer
-	initruntime();
-	p_dio_mmap->fileclosed = 0;
-	p_dio_mmap->gforce_changed = 0;
-	return;
 }
 
 // app finish, clean up
 void appfinish()
 {
-	int lastuser;
-
 	// close serial port
 	mcu_finish();
 
 	p_dio_mmap->iopid = 0;
 	p_dio_mmap->usage--;
 
-	if (p_dio_mmap->usage <= 0)
-	{
-		lastuser = 1;
-	}
-	else
-	{
-		lastuser = 0;
-	}
-
 	// clean up shared memory
 	munmap(p_dio_mmap, sizeof(struct dio_mmap));
-
-	if (lastuser)
-	{
-		unlink(dvriomap); // remove map file.
-	}
 
 	// delete pid file
 	unlink(pidfile);
@@ -2829,7 +2320,6 @@ void appfinish()
 static char *safe_fgets(char *s, int size, FILE *stream)
 {
 	char *ret;
-
 	do
 	{
 		clearerr(stream);
@@ -2845,45 +2335,6 @@ void closeall(int fd)
 
 	while (fd < fdlimit)
 		close(fd++);
-}
-
-int daemon(int nochdir, int noclose)
-{
-	switch (fork())
-	{
-	case 0:
-		break;
-	case -1:
-		return -1;
-	default:
-		_exit(0);
-	}
-
-	if (setsid() < 0)
-		return -1;
-
-	switch (fork())
-	{
-	case 0:
-		break;
-	case -1:
-		return -1;
-	default:
-		_exit(0);
-	}
-
-	if (!nochdir)
-		chdir("/");
-
-	if (!noclose)
-	{
-		closeall(0);
-		open("/dev/null", O_RDWR);
-		dup(0);
-		dup(0);
-	}
-
-	return 0;
 }
 
 void FormatFlashToFAT32()
@@ -2961,18 +2412,6 @@ void FormatFlashToFAT32()
 	}
 }
 
-int isHBDRecording()
-{
-	FILE *fp;
-	fp = fopen("/var/dvr/backupdisk", "r");
-	if (!fp)
-	{
-		return 0;
-	}
-	fclose(fp);
-	return 1;
-}
-
 void mcu_event_ocur()
 {
 	dvr_log("mcu_event_ocur sent to MCU");
@@ -3012,68 +2451,24 @@ int recordingDiskReady()
 
 #define EXTERNAL_TAB101
 
-int main(int argc, char *argv[])
+// check if we need to update firmware
+void update_firmware(int argc, char * argv[])
 {
-	int i;
-	int hdpower = 0;	 // assume HD power is off
-	int hdkeybounce = 0; // assume no hd
-	unsigned int gpsavailable = 0;
-	unsigned int smartftp_endtime = 0;
-	unsigned int mstarttime;
-	unsigned int gps_check = 0;
-	unsigned int gps_startcheck = 0;
-	unsigned int gps_started = 0;
-	unsigned int mcustart = 0;
-
-	runtime = mcustart = mstarttime = getruntime();
-
-	//int enable_Tab102=0;
-	int hdtemp1 = 0, hdtemp2 = 0;
-	if ((argc >= 2) &&
-		(!strcmp(argv[1], "-f") ||  /* force foreground */
-		 !strcmp(argv[1], "-fw") || /* MCU upgrade */
-		 !strcmp(argv[1], "-reboot")))
-	{ /* system reset */
-	}
-	else
-	{
-#ifdef DAEMON
-		if (daemon(0, 0) < 0)
-		{
-			perror("daemon");
-			exit(1);
-		}
-#endif
-	}
-	//  printf("this is in daemon mode\n");
-	if (appinit() == 0)
-	{
-		//  system("/bin/reboot");
-		return 1;
-	}
-
-	//    signal(SIGUSR1, sig_handler);
-	//    signal(SIGUSR2, sig_handler);
-
-	mcu_watchdogenable();
-	mcu_watchdogkick(); // kick watchdog
-
-	// check if we need to update firmware
 	if (argc >= 2)
 	{
-		for (i = 1; i < argc; i++)
+		for (int i = 1; i < argc; i++)
 		{
 			if (strcasecmp(argv[i], "-fw") == 0)
 			{
 				if (argv[i + 1] && mcu_update_firmware(argv[i + 1]))
 				{
 					appfinish();
-					return 0;
+					exit(0);
 				}
 				else
 				{
 					appfinish();
-					return 1;
+					exit(1);
 				}
 			}
 			else if (strcasecmp(argv[i], "-reboot") == 0)
@@ -3096,17 +2491,48 @@ int main(int argc, char *argv[])
 				watchdogtimeout = delay;
 				usewatchdog = 1;
 				mcu_watchdogenable();
-				sleep(delay + 20);
+				sync();
+				sleep(20+delay);
 				mcu_reboot();
-				return 1;
+				exit(1);
 			}
 			else if (strcasecmp(argv[i], "-fwreset") == 0)
 			{
 				mcu_reset();
-				return 0;
+				exit(0);
 			}
 		}
 	}
+	return ;
+}
+
+int main(int argc, char *argv[])
+{
+	int i;
+	int hdpower = 0;	 // assume HD power is off
+	int hdkeybounce = 0; // assume no hd
+	unsigned int smartftp_endtime = 0;
+	unsigned int mstarttime;
+	unsigned int mcustart = 0;
+
+	runtime = mcustart = mstarttime = getruntime();
+
+	//int enable_Tab102=0;
+	int hdtemp1 = 0, hdtemp2 = 0;
+
+	if (appinit() == 0)
+	{
+		return 1;
+	}
+	if( mcu_start() == 0 ) {
+		return 2 ;
+	}
+
+	// check if we need to update firmware
+	update_firmware(argc, argv);
+
+	mcu_watchdogenable();
+	mcu_watchdogkick(); // kick watchdog
 
 	set_app_mode(APPMODE_RUN, 0);
 
@@ -3131,41 +2557,11 @@ int main(int argc, char *argv[])
 
 	// initialize device power
 	devicepower = DEVICEOFF;
-	p_dio_mmap->devicepower = DEVPOWER_FULL; // assume all device is power on
-	//   mcu_wifipoweroff();
-	if (wifi_enable_ex)
-	{
-		if (wifi_poweron)
-		{
-			mcu_poepoweron();
-		}
-		else
-		{
-			mcu_poepoweroff();
-		}
-		mcu_wifipoweroff();
-	}
-	else
-	{
-		if (wifi_poweron)
-		{
-			mcu_wifipoweron();
-		}
-		else
-		{
-			mcu_wifipoweroff();
-		}
-		mcu_poepoweroff();
-	}
-
-	p_dio_mmap->tab102_ready = 0;
-	p_dio_mmap->tab102_isLive = 0;
+	p_dio_mmap->devicepower = DEVPOWER_FULL; // to turn on all device
 	p_dio_mmap->synctimestart = 0;
-	p_dio_mmap->gps_connection = 0;
 
 	while (app_mode)
 	{
-
 		// do input pin polling
 		mcu_input(10000);
 
@@ -3181,64 +2577,10 @@ int main(int argc, char *argv[])
 
 		// check input status (PWZ8)
 		input_check();
-
+		
 		runtime = getruntime();
-		if (app_mode == APPMODE_RUN)
-		{
-			// glog autostart
-			if (gps_started == 0)
-			{
-				if (runtime - mstarttime > 30000)
-				{
-					system("/mnt/nand/dvr/glog");
-					gps_started = 1;
-					gps_startcheck = runtime;
-					dvr_log("gps started");
-				}
-			}
-			else
-			{
-				if (gps_check == 0)
-				{
-					if (runtime - gps_startcheck > 60000)
-					{ //1minutes
-						if (!p_dio_mmap->gps_valid)
-						{
-							system("/mnt/nand/dvr/glog");
-							dvr_log("gps first restarted");
-							p_dio_mmap->gps_connection = 0;
-						}
-						gps_check = 1;
-					}
-				}
-				else if (gps_check == 1)
-				{
-					if (runtime - gps_startcheck > 180000)
-					{ //2minutes
-						if ((!p_dio_mmap->gps_connection) && (!p_dio_mmap->gps_valid))
-						{
-							system("/mnt/nand/dvr/glog");
-							dvr_log("gps second restarted");
-						}
-						gps_check = 2;
-					}
-				}
-			}
-		}
 
-#ifdef EXTERNAL_TAB101
-		if (p_dio_mmap->tab102_ready == 0)
-		{
-			if ((p_dio_mmap->dvrstatus & DVR_RUN) != 0)
-			{
-				if (runtime - mstarttime > 20000)
-				{
-					tab102_ready();
-					p_dio_mmap->tab102_ready = 1;
-				}
-			}
-		}
-#else
+#ifndef EXTERNAL_TAB101
 		if (gforcechange > 0)
 		{
 			if (runtime - gforce_start > 5000)
@@ -3391,41 +2733,32 @@ int main(int argc, char *argv[])
 		// Buzzer functions
 		buzzer_run(runtime);
 
-		static unsigned int temperature_timer;
-		static unsigned int templog_timer;
+		static unsigned int temperature_timer=0;
+		static unsigned int templog_timer=0;
 		if ((runtime - temperature_timer) > 10000)
 		{
 			// 10 seconds to read temperature
 			temperature_timer = runtime;
 
-			i = mcu_iotemperature();
-
-			if (i > -127 && i < 127)
-			{
+			if( mcu_iotemperature(&hdtemp1) ) {
+				p_dio_mmap->iotemperature = hdtemp1;
 				static int saveiotemp = 0;
-				if (i > 50 &&
-					(i - saveiotemp) > 1)
+				if (hdtemp1 > 50 &&
+					(hdtemp1 - saveiotemp) > 1)
 				{
-					dvr_log("system temperature: %d", i);
-					saveiotemp = i;
-					sync();
+					dvr_log("system temperature: %d", hdtemp1);
+					saveiotemp = hdtemp1;
 				}
-
-				p_dio_mmap->iotemperature = i;
 			}
-			else
-			{
-				p_dio_mmap->iotemperature = -128;
+			else {
+				p_dio_mmap->iotemperature = 0;
 			}
 
 			if (mcu_hdtemperature(&hdtemp1, &hdtemp2))
 			{
-				hdtemp1 = -128;
-				hdtemp2 = -128;
-			}
-			//check the first hard disk1
-			if (hdtemp1 > -127 && hdtemp1 < 127)
-			{
+				p_dio_mmap->hdtemperature1 = hdtemp1;
+				p_dio_mmap->hdtemperature2 = hdtemp2;
+
 				static int savehdtemp = 0;
 
 				if (hdtemp1 > 50 &&
@@ -3433,32 +2766,13 @@ int main(int argc, char *argv[])
 				{
 					dvr_log("hard disk1 temperature: %d", hdtemp1);
 					savehdtemp = hdtemp1;
-					sync();
 				}
-
-				p_dio_mmap->hdtemperature1 = hdtemp1;
 			}
-			else
-			{
-				p_dio_mmap->hdtemperature1 = -128;
+			else {
+				p_dio_mmap->hdtemperature1 = 0;
+				p_dio_mmap->hdtemperature2 = 0;
 			}
 
-			if (p_dio_mmap->hdtemperature1 < 0)
-			{
-				mTempState = 1;
-			}
-			else if (p_dio_mmap->hdtemperature1 > 10)
-			{
-				mTempState = 3;
-			}
-			else
-			{
-				mTempState = 2;
-			}
-			if (mTempState == mTempPreState)
-				mStateNum++;
-			else
-				mStateNum = 0;
 			// The Buzzer beep 4time at 0.5s interval every 30s when HDD or system temperature is over 66C
 			if (p_dio_mmap->iotemperature > 66 || p_dio_mmap->hdtemperature1 > 66 || p_dio_mmap->hdtemperature2 > 66)
 			{
@@ -3509,15 +2823,17 @@ int main(int argc, char *argv[])
 			battery_check();
 		}
 
+		// 3 seconds mode timer
 		static unsigned int appmode_timer;
-		if ((runtime - appmode_timer) > 3000)
-		{ // 3 seconds mode timer
+		if ( (runtime - appmode_timer) > 3000)
+		{ 	
 			appmode_timer = runtime;
 
 			// printf("mode %d\n", app_mode);
 			// do power management mode switching
 			if (app_mode == APPMODE_RUN)
-			{ // running mode
+			{ 
+				// running mode
 				static int app_run_bell = 0;
 				if (app_run_bell == 0 &&
 					p_dio_mmap->dvrpid > 0 &&
@@ -3528,56 +2844,15 @@ int main(int argc, char *argv[])
 					buzzer(1, 1000, 500);
 				}
 
-				if (!gHBDChecked)
-				{
-					if (recordingDiskReady())
-					{
-
-#ifdef SUPPORT_DEV_POWER
-
-						gHBDRecording = isHBDRecording();
-						if (gHBDRecording)
-						{
-							mcu_wifipoweroff();
-						}
-						gHBDChecked = 1;
-#endif
-					}
-				}
-
 				if (p_dio_mmap->poweroff) // ignition off detected
 				{
-					gHBDRecording = isHBDRecording();
-					//turn on wifi power
-
-#ifdef SUPPORT_DEV_POWER
-					// not to support turn of dev power, from 2018-10-20
-					if (!gHBDRecording)
-					{
-						if (wifi_enable_ex)
-						{
-							mcu_poepoweron();
-						}
-						else
-						{
-							mcu_wifipoweron();
-						}
-					}
-					else
-					{
-						if (wifi_enable_ex)
-						{
-							mcu_poepoweron();
-						}
-					}
-#endif
-
 					set_app_mode(APPMODE_SHUTDOWNDELAY, getshutdowndelaytime()); // hutdowndelay start ;
 					dvr_log("Power off switch, enter shutdown delay (mode %d).", app_mode);
 				}
 			}
 			else if (app_mode == APPMODE_SHUTDOWNDELAY)
-			{ // shutdown delay
+			{ 
+				// shutdown delay
 				if (p_dio_mmap->poweroff)
 				{
 					mcu_poweroffdelay();
@@ -3590,22 +2865,23 @@ int main(int argc, char *argv[])
 						{
 							p_dio_mmap->dvrcmd = 3; // stop recording
 						}
-						sync();
-						// stop glog recording
-						// if( p_dio_mmap->glogpid>0 ) {
-						//     kill( p_dio_mmap->glogpid, SIGUSR1 );
-						// }
-						set_app_mode(APPMODE_NORECORD, 60); // start standby mode
+						p_dio_mmap->nodiskcheck = 1;
+
+						// start tab101 download
+						// tab101_start();				// tab101check may cause no video issue?
+
+						// put glog and tab102 to idle
+						pause_glog();
+						pause_tab102();
+
+						set_app_mode(APPMODE_NORECORD, 60); // stop recording before jump to standby mode
 						dvr_log("Shutdown delay timeout, to stop recording (mode %d).", app_mode);
 					}
 				}
 				else
 				{
-					p_dio_mmap->devicepower = DEVPOWER_FULL;
-					set_app_mode(APPMODE_RUN, 0); // back to normal
-
 					battery_drop_report = 0; // re-enable battery status report
-
+					set_app_mode(APPMODE_RUN, 0); // back to normal
 					dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
 
 #ifdef SUPPORT_DEV_POWER
@@ -3623,289 +2899,74 @@ int main(int argc, char *argv[])
 				if (p_dio_mmap->poweroff)
 				{
 					mcu_poweroffdelay();
+
 					// close recording and run smart ftp
 					if (p_dio_mmap->dvrpid > 0 &&
 						(p_dio_mmap->dvrstatus & DVR_RUN) &&
 						((p_dio_mmap->dvrstatus & DVR_RECORD) == 0))
 					{
-						//p_dio_mmap->dvrcmd = 2; // disable liveview/playback
-						if (p_dio_mmap->fileclosed)
+						if (p_dio_mmap->fileclosed 
+#ifdef EXTERNAL_TAB101						
+							&& tab101_wait() 
+#endif
+						)
 						{
 							dvr_log("Recording stopped.");
-							modeendtime = runtime;
+							modeendtime = runtime;		// save to stop now
 						}
 					}
-					sync();
 
 					if (runtime >= modeendtime)
 					{
-#if 1
-						if (p_dio_mmap->glogpid > 0)
-						{
-							kill(p_dio_mmap->glogpid, SIGTERM);
-							gps_started = 0;
-							p_dio_mmap->glogpid = 0;
+						// start smart upload
+						if (!smartftp_disable) {
+							smartftp_retry = 3;
+							smartftp_start();
 						}
 
-#ifdef EXTERNAL_TAB101
-						if (gHBDRecording)
-						{
-							p_dio_mmap->devicepower = DEVPOWER_FULL & ~(DEVPOWER_GPS | DEVPOWER_CAMERA);
-						}
-#endif
-
-#endif
-
-#ifdef EXTERNAL_TAB101
-
-						tab102_start();
-						p_dio_mmap->nodiskcheck = 1;
-						mcu_watchdogkick();
-#else
-						// start Tab102 downloading
-						if (gforce_log_enable)
-						{
-
-							// p_dio_mmap->tab102start=1;
-							if (p_dio_mmap->tab102_isLive)
-							{
-								mcu_watchdogdisable();
-								mcu_poweroffdelay_N(600);
-								Tab102b_ContinousDownload();
-								watchdogtimeout = watchdogtimeset;
-								mcu_watchdogenable(watchdogtimeout);
-							}
-							//p_dio_mmap->tab102start=0;
-						}
-						p_dio_mmap->nodiskcheck = 1;
-
-						if (gHBDRecording)
-						{
-							mcu_poweroffdelay_N(100);
-							tab102_start();
-							mcu_watchdogkick();
-							modeendtime = runtime + 600000;
-						}
-						else
-						{
-							modeendtime = runtime + 10000;
-						}
-#endif
-						set_app_mode(APPMODE_PRESTANDBY, 600);
-						dvr_log("Enter Pre-standby mode. (mode %d).", app_mode);
+						set_app_mode(APPMODE_SMARTUPLOAD, 4*3600);
+						dvr_log("Start smart uploading mode. (mode %d).", app_mode);
 					}
+
 				}
 				else
 				{
 					// ignition turn on
-#if 0
-					// start dvr recording
-					p_dio_mmap->devicepower = DEVPOWER_FULL;
-					set_app_mode(APPMODE_RUN);   // back to normal
-					dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
-
-#ifdef SUPPORT_DEV_POWER
-					if (!wifi_poweron) {
-						mcu_wifipoweroff();
-						mcu_poepoweroff();
-					}
-#endif
-
-					if (p_dio_mmap->dvrpid > 0 &&
-						(p_dio_mmap->dvrstatus & DVR_RUN) &&
-						(p_dio_mmap->dvrcmd == 0))
-					{
-						p_dio_mmap->dvrcmd = 4;     // start recording
-					}
-#else
-
 #ifdef SUPPORT_DEV_POWER
 					dvr_log("Power on switch after shutdown delay. System reboot");
 					sync();
 					mcu_setwatchdogtime(10);
 					mcu_reboot();
 					exit(1);
-#else
-					// to wake up from standby
-					p_dio_mmap->devicepower = DEVPOWER_FULL;
+#endif
 					set_app_mode(APPMODE_RUN, 0); // back to normal
 					dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
-#endif
-
-#endif
 				}
+				
 			}
-			else if (app_mode == APPMODE_PRESTANDBY)
-			{ // get Tab102 data
-
+			else if (app_mode == APPMODE_SMARTUPLOAD)
+			{
+				// to get Tab102 data
 				if (p_dio_mmap->poweroff)
 				{
 					mcu_poweroffdelay();
 
-					// check if tab102 downloading ended
-#ifdef EXTERNAL_TAB101
-
-#ifdef SUPPORT_DEV_POWER
-					if (gHBDRecording)
-					{
-						if (p_dio_mmap->dvrstatus & DVR_NETWORK)
-						{
-							p_dio_mmap->devicepower = DEVPOWER_FULL & ~(DEVPOWER_GPS);
-							// printf("turn on camera\n");
-						}
-						else
-						{
-							//printf("turn off camera\n");
-							p_dio_mmap->devicepower = DEVPOWER_FULL & ~(DEVPOWER_GPS | DEVPOWER_CAMERA);
-						}
-					}
-#endif
-
-					// check if tab102 downloading ended
-					if (tab102_wait())
-					{
-						//check_tab102_data();
+					if( smartftp_wait() ) {
 						modeendtime = runtime;
-						//  p_dio_mmap->nodiskcheck = 0;
 					}
-#else
-					if (gHBDRecording)
-					{
-						if (tab102_wait())
-						{
-							//check_tab102_data();
-							modeendtime = runtime;
-						}
-
-#ifdef SUPPORT_DEV_POWER
-						if (p_dio_mmap->dvrstatus & DVR_NETWORK)
-						{
-							p_dio_mmap->devicepower = DEVPOWER_FULL & ~(DEVPOWER_GPS);
-							// printf("turn on camera\n");
-						}
-						else
-						{
-							//printf("turn off camera\n");
-							p_dio_mmap->devicepower = DEVPOWER_FULL & ~(DEVPOWER_GPS | DEVPOWER_CAMERA);
-						}
-#endif
-					}
-#endif
+					
 					if (runtime >= modeendtime)
 					{
-#if 1
-						if (gHBDRecording && p_dio_mmap->dvrpid > 0)
-						{
-							if (p_dio_mmap->ishybrid_copy == 0)
-							{
-								mcu_poweroffdelay_N(120);
-								FormatFlashToFAT32();
-#ifdef SUPPORT_DEV_POWER
-								if (!wifi_enable_ex)
-								{
-									mcu_wifipoweron();
-								}
-#endif
-
-								set_app_mode(APPMODE_STANDBY, getstandbytime());
-								if (smartftp_disable == 0)
-								{
-
-									smartftp_endtime = runtime + 4 * 3600 * 1000;
-									// check video lost report to smartftp.
-									if ((p_dio_mmap->dvrstatus & (DVR_VIDEOLOST | DVR_ERROR)) == 0)
-									{
-										smartftp_reporterror = 0;
-									}
-									else
-									{
-										smartftp_reporterror = 1;
-									}
-									smartftp_retry = 3;
-									smartftp_start();
-									// p_dio_mmap->ftpstart=1;
-								}
-								dvr_log("Enter standby mode. (mode %d).", app_mode);
-								sync();
-								buzzer(3, 1000, 500);
-							}
-						}
-						else
-						{
-#ifdef SUPPORT_DEV_POWER
-							if (gHBDRecording)
-							{
-								if (!wifi_enable_ex)
-								{
-									mcu_wifipoweron();
-								}
-							}
-#endif
+						smartftp_kill();		// kill smartftp anyway
+						if( smartftp_wait() ) {
 							set_app_mode(APPMODE_STANDBY, getstandbytime());
-							if (smartftp_disable == 0)
-							{
-								smartftp_endtime = runtime + 4 * 3600 * 1000;
-								// check video lost report to smartftp.
-								if ((p_dio_mmap->dvrstatus & (DVR_VIDEOLOST | DVR_ERROR)) == 0)
-								{
-									smartftp_reporterror = 0;
-								}
-								else
-								{
-									smartftp_reporterror = 1;
-								}
-								smartftp_retry = 3;
-								smartftp_start();
-								// p_dio_mmap->ftpstart=1;
-							}
-							sync();
-							buzzer(3, 1000, 500);
 							dvr_log("Enter standby mode. (mode %d).", app_mode);
-						}
-#else
-						set_app_mode(APPMODE_STANDBY, getstandbytime());
-						dvr_log("Enter standby mode. (mode %d).", app_mode);
-#endif
-					} // if( runtime>=modeendtime)
+						}						
+					} 
 				}
 				else
 				{
 					// ignition turn on
-#if 0
-					if (tab102_wait()) {
-						p_dio_mmap->tab102_ready = 0;
-
-						mstarttime = runtime;
-						p_dio_mmap->devicepower = DEVPOWER_FULL;    // turn on all devices power
-						set_app_mode(APPMODE_RUN, 0);          // back to normal
-						dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
-						if (pid_tab102 > 0) {
-							tab102_kill();
-						}
-
-						tab102_reset();
-
-						if (p_dio_mmap->dvrpid > 0 &&
-							(p_dio_mmap->dvrstatus & DVR_RUN) &&
-							p_dio_mmap->dvrcmd == 0)
-						{
-							p_dio_mmap->dvrcmd = 4;             // start recording.
-							p_dio_mmap->nodiskcheck = 0;
-						}
-
-#ifdef SUPPORT_DEV_POWER
-						if (!wifi_poweron) {
-							mcu_wifipoweroff();
-							mcu_poepoweroff();
-						}
-#endif
-
-					}
-					else {
-						tab102_kill();
-					}
-#else
-					p_dio_mmap->nodiskcheck = 0;
 
 #ifdef SUPPORT_DEV_POWER
 					sync();
@@ -3917,109 +2978,36 @@ int main(int argc, char *argv[])
 					mcu_reboot();
 					exit(1);
 #else
-					set_app_mode(APPMODE_RUN, 0); // back to normal
-					dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
+					smartftp_kill();	
+					if( smartftp_wait() ) {
+						set_app_mode(APPMODE_RUN, 0); // back to normal
+						dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
+					}
 #endif
 
-#endif
 				}
 			}
 			else if (app_mode == APPMODE_STANDBY)
-			{ // standby
-
-				p_dio_mmap->outputmap ^= HDLED; // flash LED slowly for standy mode
+			{ 
+				// standby
 				if (p_dio_mmap->poweroff)
-				{
+				{ 
+					// ignition off
 					mcu_poweroffdelay();
-				}
-				// continue wait for smartftp
-				int smartftp_ended = 1;
-				if (pid_smartftp > 0)
-				{
-					smartftp_ended = smartftp_wait();
-				}
-				if (runtime > smartftp_endtime)
-				{
-					smartftp_ended = 1;
-				}
-				//  smartftp_ended=0;
-				if (p_dio_mmap->dvrpid > 0 &&
-					(p_dio_mmap->dvrstatus & DVR_RUN) &&
-					(p_dio_mmap->dvrstatus & DVR_NETWORK))
-				{
-					p_dio_mmap->devicepower = DEVPOWER_FULL; // turn on all devices power
+					p_dio_mmap->outputmap ^= HDLED; // flash LED slowly for standy mode
+
+					if (runtime > modeendtime)
+					{
+						// start shutdown
+						set_app_mode(APPMODE_SHUTDOWN, 30); // turn off mode
+						dvr_log("Standby timeout, system shutdown. (mode %d).", app_mode);
+						buzzer(5, 1000, 500);
+					}
+					
 				}
 				else
-				{
-					if (wifi_enable_ex == 0)
-					{
-
-						if (smartftp_ended)
-						{
-							p_dio_mmap->devicepower = DEVICEOFF;
-							// turn off all devices power
-						}
-						else
-						{
-							//turn camera power off
-							// mcu_devicepower(4,0);
-							p_dio_mmap->devicepower &= ~(DEVPOWER_CAMERA);
-						}
-					}
-					else
-					{
-						p_dio_mmap->devicepower = DEVICEOFF;
-					}
-				}
-				if (p_dio_mmap->poweroff)
-				{ // ignition off
-					if (smartftp_ended)
-					{
-						// turn off HD power ?
-#if 0
-						if (standbyhdoff) {
-							p_dio_mmap->outputmap &= ~HDLED;   // turn off HDLED
-							if (hdpower) {
-								hdpower = 0;
-								mcu_hdpoweroff();
-							}
-						}
-#endif
-						if (runtime > modeendtime)
-						{
-							// start shutdown
-
-							// don't do this
-							// p_dio_mmap->devicepower = DEVICEOFF;    // turn off all devices power
-
-							//   umount_recdisk();
-							if (p_dio_mmap->dvrpid > 0)
-							{
-								kill(p_dio_mmap->dvrpid, SIGTERM);
-							}
-
-							if (p_dio_mmap->glogpid > 0)
-							{
-								kill(p_dio_mmap->glogpid, SIGTERM);
-							}
-
-							if (pid_smartftp > 0)
-							{
-								smartftp_kill();
-							}
-
-							modeendtime = runtime + 10000;		//90000 ;
-							set_app_mode(APPMODE_SHUTDOWN, 30); // turn off mode
-							dvr_log("Standby timeout, system shutdown. (mode %d).", app_mode);
-							buzzer(5, 1000, 500);
-
-							sync();
-							system("/mnt/nand/dvr/umountdisks");
-						}
-					}
-				}
-				else
-				{ // ignition on
+				{ 
+					// ignition on
 #ifdef SUPPORT_DEV_POWER
 					dvr_log("Power on switch after standby. System reboot");
 					sync();
@@ -4037,59 +3025,29 @@ int main(int argc, char *argv[])
 					mcu_reboot();
 					exit(1);
 #else
-					if (tab102_wait() && smartftp_wait())
-					{
-						p_dio_mmap->tab102_ready = 0;
-						mstarttime = runtime;
-						p_dio_mmap->devicepower = DEVPOWER_FULL; // turn on all devices power
-						set_app_mode(APPMODE_RUN, 0);			 // back to normal
-						dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
-
-						tab102_reset();
-
-						if (p_dio_mmap->dvrpid > 0 &&
-							(p_dio_mmap->dvrstatus & DVR_RUN) &&
-							p_dio_mmap->dvrcmd == 0)
-						{
-							p_dio_mmap->dvrcmd = 4; // start recording.
-							p_dio_mmap->nodiskcheck = 0;
-						}
-					}
-					else
-					{
-						if (pid_tab102 > 0)
-						{
-							tab102_kill();
-						}
-						if (pid_smartftp > 0)
-						{
-							smartftp_kill();
-						}
-					}
+					set_app_mode(APPMODE_RUN, 0);			 // back to normal
+					dvr_log("Power on switch, set to running mode. (mode %d)", app_mode);
 #endif
 				}
 			}
 			else if (app_mode == APPMODE_SHUTDOWN)
-			{ // turn off mode, no keep power on
+			{ 
+				// turn off mode, no keep power on
 				dvr_log("Shutting down ...");
 				if (p_dio_mmap->dvrpid > 0)
 				{
 					kill(p_dio_mmap->dvrpid, SIGTERM);
+					sync();
 				}
-				if (p_dio_mmap->glogpid > 0)
-				{
-					kill(p_dio_mmap->glogpid, SIGTERM);
-				}
-
-				if ((p_dio_mmap->dvrpid == 0 && p_dio_mmap->glogpid == 0) || runtime > modeendtime)
-				{ // system suppose to turn off during these time
+				else if(p_dio_mmap->dvrpid == 0 || runtime > modeendtime)
+				{ 
+					// system suppose to turn off during these time
 					// hard ware turn off failed. May be ignition turn on again? Reboot the system
 					//    dvr_log("Hardware shutdown failed. Try reboot by software!" );
 					//    set_app_mode(APPMODE_REBOOT) ;
-					sync();
+					system("/mnt/nand/dvr/umountdisks");
 					mcu_setwatchdogtime(10); // 10 seconds watchdog time out
 					mcu_reboot();
-					exit(1);
 					set_app_mode(APPMODE_QUIT, 0); // quit IOPROCESS
 				}
 			}
@@ -4108,11 +3066,12 @@ int main(int argc, char *argv[])
 						kill(p_dio_mmap->glogpid, SIGTERM);
 					}
 					// let MCU watchdog kick in to reboot the system
-					watchdogtimeout = 10; // 10 seconds watchdog time out
+					watchdogtimeout = 10; 		  // 10 seconds watchdog time out
+					usewatchdog = 1;
 					mcu_watchdogenable();
-					usewatchdog = 0;			   // don't call watchdogenable again!
-					watchdogenabled = 0;		   // don't kick watchdog ;
-					reboot_begin = 1;			   // rebooting in process
+					usewatchdog = 0;			  // don't call watchdogenable again!
+					watchdogenabled = 0;		  // don't kick watchdog ;
+					reboot_begin = 1;			  // rebooting in process
 					modeendtime = runtime + 20000; // 20 seconds time out, watchdog should kick in already!
 				}
 				else if (runtime > modeendtime)
@@ -4120,63 +3079,18 @@ int main(int argc, char *argv[])
 					// program should not go throught here,
 					mcu_reboot();
 					exit(1);
-					// system("/bin/reboot");                  // do software reboot
-					set_app_mode(APPMODE_QUIT, 0); // quit IOPROCESS
+					// system("/bin/reboot");           // do software reboot
+					set_app_mode(APPMODE_QUIT, 0); 		// quit IOPROCESS
 				}
 			}
 			else if (app_mode == APPMODE_REINITAPP)
 			{
-
-				//printf("apply again\n");
-				if (p_dio_mmap->poweroff)
-				{
-					//   printf("apply called\n");
-					reloadconfig();
-					if (wifi_enable_ex)
-					{
-						mcu_poepoweron();
-						mcu_wifipoweroff();
-					}
-					else
-					{
-						if (!gHBDRecording)
-							mcu_wifipoweron();
-						mcu_poepoweroff();
-					}
-					p_dio_mmap->poweroff = 1;
-					p_dio_mmap->tab102_ready = 1;
-					set_app_mode(app_mode_r, 0);
-				}
-				else
-				{
-					dvr_log("IO re-initialize.");
-					// appfinish();
-					//appinit();
-					re_appinit();
-					// tab102_setup();
-
-					if (p_dio_mmap->tab102_isLive)
-					{
-						// tab102_settrigger();
-						Tab102b_setTrigger();
-					}
-					mcu_wifipoweroff();
-					mcu_poepoweroff();
-					if (wifi_poweron)
-					{
-						sleep(1);
-						if (wifi_enable_ex)
-						{
-							mcu_poepoweron();
-						}
-						else
-						{
-							if (!gHBDRecording)
-								mcu_wifipoweron();
-						}
-					}
-					set_app_mode(APPMODE_RUN, 0);
-				}
+				dvr_log("IO re-initialize.");
+				appinit();
+				set_app_mode(APPMODE_RUN, 0);				
+			}
+			else if (app_mode == APPMODE_QUIT) {
+				break;
 			}
 			else
 			{
@@ -4186,15 +3100,18 @@ int main(int argc, char *argv[])
 			}
 
 			// updating watch dog state
-			if (usewatchdog && watchdogenabled == 0)
-			{
-				mcu_watchdogenable();
-				watchdogenabled = 1;
+			if( usewatchdog ) {
+				if ( !watchdogenabled )
+				{
+					mcu_watchdogenable();
+					watchdogenabled = 1;
+				}
+
+				// kick watchdog
+				if (watchdogenabled)
+					mcu_watchdogkick();
 			}
 
-			// kick watchdog
-			if (watchdogenabled)
-				mcu_watchdogkick();
 
 			// DVRSVR watchdog running?
 			if (p_dio_mmap->dvrwatchdog >= 0)
@@ -4203,7 +3120,8 @@ int main(int argc, char *argv[])
 				{
 					++(p_dio_mmap->dvrwatchdog);
 					if (p_dio_mmap->dvrwatchdog == 50)
-					{ // DVRSVR dead for 2.5 min?
+					{ 
+						// DVRSVR dead for 2.5 min?
 						if (kill(p_dio_mmap->dvrpid, SIGUSR2) != 0)
 						{
 							// dvrsvr may be dead already, pid not exist.
@@ -4281,17 +3199,11 @@ int main(int argc, char *argv[])
 			// check HD plug-in state
 			if (hdlock && hdkeybounce < 4)
 			{ //10     // HD lock on
-#if 0
-				if (hdpower == 0) {
-					// turn on HD power
-					mcu_hdpoweron();
-				}
-#endif
+
 				hdkeybounce = 0;
 
 				//dvr_log("hdinserted:%d",hdinserted);
 				if (hdinserted &&  // hard drive inserted
-					!pid_tab102 && // tab102 is not uploading data
 					p_dio_mmap->dvrpid > 0 &&
 					p_dio_mmap->dvrwatchdog >= 0 &&
 					(p_dio_mmap->dvrstatus & DVR_RUN) &&
@@ -4309,18 +3221,11 @@ int main(int argc, char *argv[])
 
 							// turn off HD led
 							p_dio_mmap->outputmap &= ~HDLED;
-							;
 
 							mcu_setwatchdogtime(10); // 10 seconds watchdog time out
 							mcu_reboot();
 							exit(1);
 						}
-#if 0
-						else {
-							if (mTempState == 3)
-								system("/mnt/nand/dvr/tdevmount /mnt/nand/dvr/tdevhotplug");
-						}
-#endif
 					}
 					else
 					{
@@ -4445,28 +3350,25 @@ int main(int argc, char *argv[])
 
 		// adjust system time with RTC
 		static unsigned int adjtime_timer;
-		if (gpsvalid != p_dio_mmap->gps_valid)
+		static int gpsvalid = 0;
+		if ( p_dio_mmap->gps_valid != gpsvalid )
 		{
-			gpsvalid = p_dio_mmap->gps_valid;
-			if (gpsvalid)
-			{
-				time_syncgps();
-				adjtime_timer = runtime;
-				gpsavailable = 1;
+			gpsvalid = p_dio_mmap->gps_valid ;
+			if( gpsvalid ) {
+				// try force gps time update
+				adjtime_timer = runtime - 800000 ;
 			}
 		}
 		if ((runtime - adjtime_timer) > 600000 ||
 			(runtime < adjtime_timer))
-		{ // call adjust time every 10 minute
+		{ 
+			// call adjust time every 10 minute
 			if (g_syncrtc)
 			{
-				if (gpsavailable)
+				if (gpsvalid)
 				{
-					if (gpsvalid)
-					{
-						time_syncgps();
-						adjtime_timer = runtime;
-					}
+					time_syncgps();
+					adjtime_timer = runtime;
 				}
 				else
 				{
@@ -4478,7 +3380,6 @@ int main(int argc, char *argv[])
 				}
 			}
 		}
-		mTempPreState = mTempState;
 	}
 
 	if (watchdogenabled)

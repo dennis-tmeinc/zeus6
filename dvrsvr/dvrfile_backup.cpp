@@ -592,7 +592,7 @@ int dvrfile::repair()
     
     truncate( m_filesize );
     
-    m_keyarray.setsize(0);
+    m_keyarray.clean();
     
     int ms = m_filetime.milliseconds;
     

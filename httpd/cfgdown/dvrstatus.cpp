@@ -2,9 +2,11 @@
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 
-#include "../../cfg.h"
-#include "../../dvrsvr/dvr.h"
-#include "../../ioprocess/diomap.h"
+#include "cfg.h"
+#include "dvrsvr/dvr.h"
+#include "dvrsvr/dir.h"
+#include "ioprocess/diomap.h"
+#include "json/json.h"
 
 struct channelstate {
     int sig ;
@@ -28,7 +30,7 @@ int getchannelstate(struct channelstate * chst, unsigned long * streambytes, int
         return rch;
     }
 
-    port=15111 ;
+    port=15114 ;
     fscanf(portfile, "%d", &port);
     sockfd = net_connect( (const char *)"127.0.0.1", port);
 
@@ -95,147 +97,22 @@ int memory_usage( int * mem_total, int * mem_free)
     return 1;
 }
 
-class dir_find {
-    protected:
-        DIR * m_pdir ;
-        struct dirent * m_pent ;
-        struct dirent m_entry ;
-        char m_dirname[PATH_MAX] ;
-        char m_pathname[PATH_MAX] ;
-        struct stat m_statbuf ;
-    public:
-        dir_find() {
-            m_pdir=NULL ;
-        }
-        // close dir handle
-        void close() {
-            if( m_pdir ) {
-                closedir( m_pdir );
-                m_pdir=NULL ;
-            }
-        }
-        // open an dir for reading
-        void open( const char * path ) {
-            int l ;
-            close();
-            m_pent=NULL ;
-            strncpy( m_dirname, path, sizeof(m_dirname) );
-            l=strlen( m_dirname ) ;
-            if( l>0 ) {
-                if( m_dirname[l-1]!='/' ) {
-                    m_dirname[l]='/' ;
-                    m_dirname[l+1]='\0';
-                }
-            }
-            m_pdir = opendir(m_dirname);
-        }
-        ~dir_find() {
-            close();
-        }
-        dir_find( const char * path ) {
-            m_pdir=NULL;
-            open( path );
-        }
-        int isopen(){
-            return m_pdir!=NULL ;
-        }
-        // find directory.
-        // return 1: success
-        //        0: end of file. (or error)
-        int find() {
-            struct stat findstat ;
-            if( m_pdir ) {
-                while( readdir_r( m_pdir, &m_entry, &m_pent)==0  ) {
-                    if( m_pent==NULL ) {
-                        break;
-                    }
-                    if( (m_pent->d_name[0]=='.' && m_pent->d_name[1]=='\0') || 
-                       (m_pent->d_name[0]=='.' && m_pent->d_name[1]=='.' && m_pent->d_name[2]=='\0') ) {
-                           continue ;
-                       }
-                    if( m_pent->d_type == DT_UNKNOWN ) { // d_type not available
-                        strcpy( m_pathname, m_dirname );
-                        strcat( m_pathname, m_pent->d_name );
-                        if( stat( m_pathname, &findstat )==0 ) {
-                            if( S_ISDIR(findstat.st_mode) ) {
-                                m_pent->d_type = DT_DIR ;
-                            }
-                            else if( S_ISREG(findstat.st_mode) ) {
-                                m_pent->d_type = DT_REG ;
-                            }
-                        }
-                    }
-                    return 1 ;
-                }
-            }
-            m_pent=NULL ;
-            return 0 ;
-        }
-        char * pathname()  {
-            if(m_pent) {
-                strcpy( m_pathname, m_dirname );
-                strcat( m_pathname, m_pent->d_name );
-                return (m_pathname) ;
-            }
-            return NULL ;
-        }
-        char * filename() {
-            if(m_pent) {
-                return (m_pent->d_name) ;
-            }
-            return NULL ;
-        }
-        
-        // check if found a dir
-        int    isdir() {
-            if( m_pent ) {
-                return (m_pent->d_type == DT_DIR) ;
-            }
-            else {
-                return 0;
-            }
-        }
-        
-        // check if found a regular file
-        int    isfile(){
-            if( m_pent ) {
-                return (m_pent->d_type == DT_REG) ;
-            }
-            else {
-                return 0;
-            }
-        }
-        
-        // return file stat
-        struct stat * filestat(){
-            char * path = pathname();
-            if( path ) {
-                if( stat( path, &m_statbuf )==0 ) {
-                    return &m_statbuf ;
-                }
-            }
-            return NULL ;
-        }
-};
-
-
-int disk_usage( int * disk_total, int * disk_free)
+int disk_usage(int* disk_total, int* disk_free)
 {
-   *disk_free = 0;
-   *disk_total = 0;
-    dir_find disks(VAR_DIR "/disks");
-    while( disks.find() ) {
-    	if( disks.isdir() ) {
-		    struct statfs stfs;
-	       if (statfs(disks.pathname(), &stfs) == 0) {
-	            *disk_free += stfs.f_bavail / ((1024 * 1024) / stfs.f_bsize);
-	            *disk_total += stfs.f_blocks / ((1024 * 1024) / stfs.f_bsize);
-	        }	    	
-	     }
-    }
-    return 1 ;
+	*disk_free = 0;
+	*disk_total = 0;
+	dir disks(VAR_DIR "/disks");
+	while (disks.find()) {
+		if (disks.isdir()) {
+			struct statfs stfs;
+			if (statfs(disks.pathname(), &stfs) == 0) {
+				*disk_free += stfs.f_bavail / ((1024 * 1024) / stfs.f_bsize);
+				*disk_total += stfs.f_blocks / ((1024 * 1024) / stfs.f_bsize);
+			}
+		}
+	}
+	return 1;
 }
-
 
 int get_temperature( int * sys_temp, int * disk_temp)
 {
@@ -265,6 +142,7 @@ void print_status()
     int  chno=0 ;
     struct channelstate cs[16] ;
     struct dvrstat stat ;
+    char strbuf[4096] ;
 
     memset( &stat, 0, sizeof( stat ) );
     memset( &savedstat, 0, sizeof( savedstat ) );
@@ -283,19 +161,19 @@ void print_status()
         setenv("TZ", tz, 1);
     }
 
-    //JSON head
-    printf("{");
+    json dvrstatus(JSON_Object) ;
 
     // dvr time
-    char timebuf[100] ;
     double timeinc ;
     gettimeofday(&stat.checktime, NULL);
 
     time_t ttnow ;
     ttnow = (time_t) stat.checktime.tv_sec ;
+
 #define RFC1123FMT "%a, %d %b %Y %H:%M:%S "
-    strftime( timebuf, sizeof(timebuf), RFC1123FMT, localtime( &ttnow ) );
-    printf("\"dvrtime\":\"%s\",", timebuf);
+
+    strftime( strbuf, sizeof(strbuf), RFC1123FMT, localtime( &ttnow ) );
+    dvrstatus.addStringItem("dvrtime", strbuf);
 
     if( savedstat.checktime.tv_sec==0 ) {
         timeinc = 1.0 ;
@@ -305,131 +183,141 @@ void print_status()
             (double)(stat.checktime.tv_usec - savedstat.checktime.tv_usec)/1000000.0 ;
     }
 
+    dvrstatus.addNumberItem("cpu_checktime", (double)(stat.checktime.tv_usec)/1000000.0 + stat.checktime.tv_sec );
+
     // get status from dvrsvr
     memset( cs, 0, sizeof(cs) );
     chno=getchannelstate(cs, stat.streambytes, 16);
     for( i=1; i<=chno ; i++ )
     {
         if( cs[i-1].sig ) {
-            printf("\"camera_%d_signal_lost\":\"on\",", i );
+            sprintf(strbuf,"camera_%d_signal_lost", i);
+            dvrstatus.addStringItem(strbuf, "on");
         }
         if( cs[i-1].rec ) {
-            printf("\"camera_%d_recording\":\"on\",", i );
+            sprintf(strbuf,"camera_%d_recording", i);
+            dvrstatus.addStringItem(strbuf, "on");
         }
         if( cs[i-1].mot ) {
-            printf("\"camera_%d_motion\":\"on\",", i );
+            sprintf(strbuf,"camera_%d_motion", i);
+            dvrstatus.addStringItem(strbuf, "on");
         }
+
+        sprintf(strbuf,"camera_%d_streambytes", i);
+        dvrstatus.addNumberItem(strbuf, stat.streambytes[i-1]);
 
         double bitrate = (double)(stat.streambytes[i-1] - savedstat.streambytes[i-1]) / (timeinc*125.0) ;
         if( bitrate > 10000.0 ) {
             bitrate = 0.0 ;
         }
 
-        printf("\"camera_%d_bitrate\":\"%d\",", i, (int)bitrate );
-
+        sprintf(strbuf,"camera_%d_bitrate", i);
+        dvrstatus.addNumberItem(strbuf, (int)bitrate);
     }
 
     // calculate CPU usage
     FILE * uptimefile = fopen("/proc/uptime", "r" );
     if( uptimefile ) {
-        fscanf( uptimefile, "%f %f", &stat.uptime, &stat.idletime ) ;
+        if( fscanf( uptimefile, "%f %f", &stat.uptime, &stat.idletime )>0 ) {
+            dvrstatus.addNumberItem("cpu_uptime", stat.uptime);
+            dvrstatus.addNumberItem("cpu_idletime", stat.idletime);
+        } 
         fclose( uptimefile );
     }
 
     float cpuusage = stat.uptime - savedstat.uptime ;
     if( cpuusage < 0.1 ) {
-        cpuusage = 99.0 ;
+        cpuusage = 0.0 ;
     }
     else {
         cpuusage = 100.0 * (cpuusage - (stat.idletime-savedstat.idletime)) / cpuusage ;
     }
 
-    printf("\"cpu_usage\":\"%.1f\",", cpuusage );
-    
+    dvrstatus.addNumberItem("cpu_usage", cpuusage);
 
     // print memory usage
     int stfree, sttotal ;
     if( memory_usage(&sttotal, &stfree) ) {
-        printf("\"memory_total\":\"%.1f\",", ((float)sttotal)/1000.0 );
-        printf("\"memory_free\":\"%.1f\",", ((float)stfree)/1000.0 );
+        dvrstatus.addNumberItem("memory_total", sttotal/1000);
+        dvrstatus.addNumberItem("memory_free", stfree/1000);
     }
 
     // print disk usage
     if( disk_usage(&sttotal, &stfree) ) {
-        printf("\"disk_total\":\"%d\",", sttotal );
-        printf("\"disk_free\":\"%d\",", stfree );
+        dvrstatus.addNumberItem("disk_total", sttotal);
+        dvrstatus.addNumberItem("disk_free", stfree);
     }
     else {
-        printf("\"disk_total\":\"%d\",", 0 );
-        printf("\"disk_free\":\"%d\",", 0 );
+        dvrstatus.addNumberItem("disk_total", 0);
+        dvrstatus.addNumberItem("disk_free", 0);
     }
 
     // information from dio_map
     dio_mmap();
+    
     // print system temperature
-    int systemperature=-128, hdtemperature=-128 ;
+    int systemperature=0, hdtemperature=0 ;
     get_temperature(&systemperature, &hdtemperature) ;
-    if( systemperature>-125 && systemperature<125 )  {
-        printf("\"temperature_system_c\":\"%d\",", systemperature );
-        printf("\"temperature_system_f\":\"%d\",", systemperature*9/5+32 );
-    }
-    else {
-        printf("\"temperature_system_c\":\"\"," );
-        printf("\"temperature_system_f\":\"\"," );
-    }
-    if( hdtemperature>-125 && hdtemperature<125 )  {
-        printf("\"temperature_disk_c\":\"%d\",", hdtemperature );
-        printf("\"temperature_disk_f\":\"%d\",", hdtemperature*9/5+32 );
-    }
-    else {
-        printf("\"temperature_disk_c\":\"\"," );
-        printf("\"temperature_disk_f\":\"\"," );
-    }
+    dvrstatus.addNumberItem("temperature_system_c", systemperature);
+    dvrstatus.addNumberItem("temperature_disk_c", hdtemperature);
 	
 	// battery status & voltage
-	printf("\"battery_state\":\"%d\",",  p_dio_mmap->battery_state );
-	printf("\"battery_voltage\":\"%.2f\",", p_dio_mmap->battery_voltage );
+    dvrstatus.addNumberItem("battery_state", p_dio_mmap->battery_state);
+    dvrstatus.addNumberItem("battery_voltage", p_dio_mmap->battery_voltage);
 	
 	// GPS coordinates
-	printf("\"gps_valid\":\"%d\",",  p_dio_mmap->gps_valid );
-	printf("\"gps_latitude\":\"%.5f\",", p_dio_mmap->gps_latitude );
-	printf("\"gps_longitude\":\"%.5f\",", p_dio_mmap->gps_longitud );
+    dvrstatus.addNumberItem("gps_valid", p_dio_mmap->gps_valid);
+    dvrstatus.addNumberItem("gps_latitude", p_dio_mmap->gps_latitude);
+    dvrstatus.addNumberItem("gps_longitude", p_dio_mmap->gps_longitud);
 	
 	// pre-recording status
 	if( chno > 16 ) chno=16 ;
     for( i=1; i<=chno ; i++ )
     {
 		int st = p_dio_mmap->camera_status[i-1] ;
-        printf("\"camera_%d_recordstate\":\"", i );
-        
+        sprintf(strbuf,"camera_%d_recordstate", i);
 		//         2: recording
 		//         3: force-recording
 		//         4: lock recording
 		//         5: pre-recording
 		//         6: in-memory pre-recording
-        
 		if( st & 16 ) {
-            printf("Locked recording\"," );
+            dvrstatus.addStringItem(strbuf, "Locked recording");
 		}
 		else if( st & 4 ) {
-            printf("Recording\"," );
+            dvrstatus.addStringItem(strbuf, "Recording");
 		}
 		else if( st & (1<<5) ) {
 			if( st & (1<<6) ) {
-				printf("In-RAM Pre-Recording\"," );
+                dvrstatus.addStringItem(strbuf, "In-RAM Pre-Recording");
 			}
 			else {
-				printf("Pre-Recording\"," );
+                dvrstatus.addStringItem(strbuf, "Pre-Recording");
 			}
 		}
 		else {
-			printf("No recording\"," );
+            dvrstatus.addStringItem(strbuf, "No recording");
 		}
 	}
+
+    // bodycamera status
+    chno = p_dio_mmap->bodycam_num ;
+    dvrstatus.addNumberItem("bodycam_num", chno);
+    for( i=0; i<chno; i++) {
+        int st = p_dio_mmap->bodycam_status[i] ;
+        sprintf(strbuf,"bodycam%d_connect", i+1);
+        if(st & 1) {
+            dvrstatus.addStringItem(strbuf, "on");
+        }
+        sprintf(strbuf,"bodycam%d_rec", i+1);
+        if(st & 2) {
+            dvrstatus.addStringItem(strbuf, "on");
+        }
+    }
 	
     dio_munmap();
 
-    printf("\"objname\":\"status_value\"}\r\n" );
+    dvrstatus.addStringItem("objname", "status_value");
 
     statfile = fopen( "savedstat", "wb");
     if( statfile ) {
@@ -437,6 +325,9 @@ void print_status()
         fclose( statfile );
     }
 
+    // output dvrstatus
+    dvrstatus.encode(strbuf,4096);
+    printf("%s", strbuf);
 }
 
 //  function from getquery

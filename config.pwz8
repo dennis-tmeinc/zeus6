@@ -1,28 +1,29 @@
-
-PROJDIR=/home/dennis/proj/dvr/zeus6
 #internal name : PWZ8
 proj=PWZ6HD
 EAGLE=zeus8
 
-export PROJDIR proj EAGLE
+#PROJDIR := /home/dennis/proj/dvr/zeus6
+INCFILE := $(lastword $(MAKEFILE_LIST))
+PROJDIR := $(abspath $(dir $(INCFILE)).)
 
 # cross compile toolchain for zeus8 board
+#TOOLCHAIN=$(PROJDIR)/../toolchain/zeus8/toolchain_gnueabi-4.4.0_ARMv5TE/usr
+TOOLCHAIN=$(HOME)/share/toolchain/zeus
 
-#TOOLROOT=$(PROJDIR)/../toolchain/zeus8/toolchain_gnueabi-4.4.0_ARMv5TE/usr
-TOOLROOT=/home/dennis/opt/toolchain
-CROSS_COMPILE_PREFIX=$(TOOLROOT)/bin/arm-linux-
+CROSS_COMPILE_PREFIX=$(TOOLCHAIN)/bin/arm-linux-
+CROSS_COMPILE=$(CROSS_COMPILE_PREFIX)
 
-export CROSS_COMPILE=$(CROSS_COMPILE_PREFIX)
-export CC=$(CROSS_COMPILE_PREFIX)gcc
-export STRIP=$(CROSS_COMPILE_PREFIX)strip
+CC = $(CROSS_COMPILE)gcc
+CXX = $(CROSS_COMPILE)gcc
+LD= $(CROSS_COMPILE)gcc
+STRIP = $(CROSS_COMPILE)strip
 
-export LD_LIBRARY_PATH=$(TOOLROOT)/lib
+export LD_LIBRARY_PATH=$(TOOLCHAIN)/lib
 
 # dvr specific options
-CFLAGS = -march=armv5te -mthumb -Os -fno-exceptions -I$(PROJDIR) -I$(PROJDIR)/lib 
-LDFLAGS = -L$(PROJDIR)/deploy/$(proj)/host/dvr/lib -L$(PROJDIR)/lib -lfixc++
-
-export CFLAGS
+CFLAGS += -nostdinc++ -I$(PROJDIR) -I$(PROJDIR)/lib -march=armv5te -Os -fno-exceptions -fno-rtti
+LDFLAGS = -L$(PROJDIR)/deploy/$(proj)/host/dvr/lib -L$(PROJDIR)/lib
+LDLIBS = -lrt -lfixc++
 
 # CFLAGS for PC
 CFLAGS_PC = -I$(PROJDIR) -I$(PROJDIR)/lib 

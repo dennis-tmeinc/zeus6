@@ -11,7 +11,7 @@ OBJS = $(patsubst %.c, %.o, $(SOURCES))
 CFLAGS += -I../dvrsvr
 
 lpc21isp: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $(SOURCES) $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $(OBJS) $(LDFLAGS)
 
 %.o : %.c $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

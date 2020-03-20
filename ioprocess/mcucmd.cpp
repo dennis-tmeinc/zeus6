@@ -1,12 +1,9 @@
 
 /*
- * 
- * 
  *   mcucmd.cpp
  *       strip out some simple mcu commands from ioprocess.cpp
  * 
  */
-  
  
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 // MCU POWER DOWN CODE
@@ -46,7 +43,7 @@
 #include "../cfg.h"
 
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 #include "diomap.h"
 #include "mcu.h"
 
@@ -65,8 +62,6 @@ int mcu_bootupready(int* D1)
         return 1 ;
     }
 
-	printf("BOOT RDY?\n");    
-    
     char * rsp = mcu_cmd( 0x11, 1, 1 ) ;
     if( rsp ) {
         int rlen = rsp[0] - 6 ;
@@ -145,7 +140,6 @@ int mcu_readcode()
 				ttm.tm_hour,
 				ttm.tm_min,
 				ttm.tm_sec );
-
 		}
 		return 1 ;
 	}
@@ -236,8 +230,6 @@ int mcu_campower()
 	return 0;
 }
 
-//  ----------------------------
-
 // 3 LEDs On Panel
 //   parameters:
 //      led:  0= USB flash LED, 1= Error LED, 2 = Video Lost LED
@@ -322,7 +314,7 @@ int mcu_r_rtc( struct tm * ptm,time_t * rtc )
 		ttm.tm_sec  = getbcd(responds[5]) ;
 		ttm.tm_isdst= -1 ;
 
-		if( ttm.tm_year>110 && ttm.tm_year<150 &&
+		if( ttm.tm_year>115 && ttm.tm_year<150 &&
 		ttm.tm_mon>=0 && ttm.tm_mon<=11 &&
 		ttm.tm_mday>=1 && ttm.tm_mday<=31 &&
 		ttm.tm_hour>=0 && ttm.tm_hour<=24 &&
@@ -382,7 +374,7 @@ void mcu_poweroffdelay()
     else {
         delay=0 ;
     }
-	char * rsp = mcu_cmd( 0x08, 2, 0, delay);
+	char * rsp = mcu_cmd( MCU_CMD_POWEROFFDELAY, 2, 0, delay);
 	if( rsp ) {
 		mcupowerdelaytime = ((unsigned)(rsp[5]))*256+((unsigned)rsp[6]) ;
 #ifdef MCU_DEBUG        
@@ -396,7 +388,7 @@ void mcu_poweroffdelay_N(int delay)
 	// 08 command is very confusing in documents. ????
 	//   08 described as a msg from MCU not a command
 	// I just keep using older version
-	char * rsp = mcu_cmd( 0x08, 2, (delay >> 8) & 0xff, delay & 0xff );
+	char * rsp = mcu_cmd( MCU_CMD_POWEROFFDELAY, 2, (delay >> 8) & 0xff, delay & 0xff );
 	if( rsp ) {
 		mcupowerdelaytime = ((unsigned)(rsp[5]))*256+((unsigned)rsp[6]) ;
 #ifdef MCU_DEBUG        
@@ -407,7 +399,16 @@ void mcu_poweroffdelay_N(int delay)
 
 void mcu_setwatchdogtime(int timeout)
 {
-	mcu_cmd( 0x19, 2, timeout/256, timeout%256 );
+	mcu_cmd( MCU_CMD_SETWATCHDOGTIMEOUT, 2, timeout/256, timeout%256 );
+}
+
+int mcu_watchdogdisable()
+{
+	char * responds = mcu_cmd(MCU_CMD_DISABLEWATCHDOG);
+	if( responds ) {
+		return responds[5] ;
+	}
+	return 0 ;
 }
 
 void mcu_watchdogenable()
@@ -415,51 +416,50 @@ void mcu_watchdogenable()
 	extern int usewatchdog ;
 	extern int watchdogtimeout ;
 	if( usewatchdog ) {
-		mcu_cmd( 0x19, 2, watchdogtimeout/256, watchdogtimeout%256 );
-		mcu_cmd( 0x1a );
+		mcu_setwatchdogtime(watchdogtimeout);
+		mcu_cmd( MCU_CMD_ENABLEWATCHDOG );
 		dvr_log("mcu_watchdogenable");    
 	}
 	else {
-		mcu_cmd( 0x1b );
+		mcu_watchdogdisable();
 	}
-}
-
-int mcu_watchdogdisable()
-{
-	char * responds = mcu_cmd(0x1b);
-	if( responds ) {
-		return responds[5] ;
-	}
-	return 0 ;
 }
 
 void mcu_watchdogkick()
 {
-	mcu_sendcmd(0x18);
+	mcu_sendcmd(MCU_CMD_KICKWATCHDOG);
 }
 
 // get io board temperature
-int mcu_iotemperature()
+int mcu_iotemperature(int *iotemp)
 {
     char * responds = mcu_cmd( 0x0b );
     if( responds ) {
-	    return (int)responds[5] ;
+		*iotemp = (int)responds[5] ;
+		if( *iotemp < -120 ) *iotemp = 0 ; 
+		return 1 ;
 	}
-   
-    return -128;
+	else {
+		*iotemp = 0;
+		return 0 ;
+	}
 }
 
 // get hd temperature
-int mcu_hdtemperature(int *hd1,int *hd2)
+int mcu_hdtemperature(int *hdtemp1,int *hdtemp2)
 {
 	char * responds = mcu_cmd( 0x0c );
 	if( responds ) {
-		*hd1=(int)(signed char)responds[5] ;
-		*hd2=(int)(signed char)responds[7] ;
-		return 0 ;
+		*hdtemp1=(int)(signed char)responds[5] ;
+		*hdtemp2=(int)(signed char)responds[7] ;
+		if( *hdtemp1 < -120 ) *hdtemp1 = 0 ; 
+		if( *hdtemp2 < -120 ) *hdtemp2 = 0 ; 
+		return 1 ;
 	}
 	else {
-		return -1 ;
+		*hdtemp1=0;
+		*hdtemp2=0;
+		return 0;
 	}
 }
 

@@ -4,6 +4,8 @@
 
 include ../../config
 
+export STRIP
+
 all:
 	./mkdeploy $(proj) 1
 

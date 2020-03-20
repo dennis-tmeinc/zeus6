@@ -35,41 +35,41 @@ TARGET= login \
 	mcufwupd\
 	mfid
 
-LDFLAGS += -lcrypt
+LDLIBS += -lcrypt
 
 all: $(TARGET)
 
 login : login.o getquery.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 loginx : loginx.o getquery.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 pagevalue : pagevalue.o getquery.o $(PROJDIR)/lib/json/json.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 cfgupload : cfgupload.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 firmwareupd : firmwareupd.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 mcufwupd : mcufwupd.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 mfid : mfid.o getquery.o $(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/md5.o $(PROJDIR)/dvrsvr/crypt.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 gangle.cgi : gangle.o getquery.o $(PROJDIR)/ioprocess/diomap.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 getjpeg.cgi : getjpeg.o getquery.o $(PROJDIR)/lib/net/net.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
 eagle_setup : eagle_setup.o $(PROJDIR)/dvrsvr/md5.o
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) 
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS) 
 
-%.o : %.cpp
+%.o : %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 clean :

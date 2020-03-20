@@ -15,31 +15,31 @@ HEADERS = src_httpd/eaglehttpd.h
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 
 eaglehttpd: $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 	
 %.o : %.cpp $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 eagle_setup- :
-	make -C eagle_setup
+	$(MAKE) -C eagle_setup
 
 livecam- :
-	make -C livecam
+	$(MAKE) -C livecam
 
 getsetup- :
-	make -C getsetup
+	$(MAKE) -C getsetup
 
 cfgdown- :
-	make -C cfgdown
+	$(MAKE) -C cfgdown
 
 clean :
 	rm -f eaglehttpd
 	rm -f *.o
 	rm -f $(OBJS)
-	make -C eagle_setup clean
-	make -C getsetup clean
-	make -C livecam clean
-	make -C cfgdown clean
+	$(MAKE) -C eagle_setup clean
+	$(MAKE) -C getsetup clean
+	$(MAKE) -C livecam clean
+	$(MAKE) -C cfgdown clean
 
 
 

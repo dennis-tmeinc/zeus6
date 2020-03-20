@@ -4,18 +4,20 @@
 
 include ../config
 
+LDLIBS += -lrt
+
 SOURCES=dvrtime.cpp
 
 HEADERS=
 
-EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
-EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
+EXTHEADERS=../dvrsvr/config.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
+EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp ../ioprocess/diomap.cpp
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 OBJS += $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
 dvrtime : $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 dtime : $(SOURCES) $(EXTSOURCES) $(EXTHEADERS)
 	gcc $(CFLAGS_PC) -o $@ $(SOURCES) $(EXTSOURCES) -lstdc++

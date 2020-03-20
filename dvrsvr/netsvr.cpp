@@ -4,18 +4,26 @@
 #include <netinet/ip.h>
 #include <netinet/in.h>
 
+#include "ioprocess/diomap.h"
+
 static int serverfd;
 static int msgfd;
-static struct sockad loopback;
 static pthread_t net_threadid;
 static int net_run;
 static int net_port;
 static string net_multicast_addr ;
 static int noreclive=1 ;
 static int net_fifos = 0;
+static string smart_server ;
 
 int    net_active = 0 ;
 int    powerNum = 0;
+
+// smart server port
+#define SMART_PORT (49954)
+// smart detect
+#define SMART_DETECT "lookingforsmartserver"
+#define SMART_RESP   "iamserver"
 
 static pthread_mutex_t net_mutex;
 void net_lock()
@@ -34,7 +42,7 @@ void net_trigger()
 	// this make select() on net_thread return right away
 	net_lock();
 	if( net_fifos == 0 )
-		sendto(msgfd, "T", 1, 0, &loopback.s.saddr, loopback.len);
+        msg_sendto("127.0.0.1",net_port, "T", 1);
 	net_unlock();
 }
 
@@ -132,6 +140,11 @@ void net_message()
 		else if( req == DVRKEYINPUT ) {	// pw key input , for bodycam support
 			event_key( msgbuf[1]&0xff, msgbuf[1]&0xffffff00); 	// keyboard/keypad event
 		}		
+        else if( strncmp((char *)msgbuf,SMART_RESP,9)==0 ){
+            // smart server detected!
+            printf("Smart server detected\n");
+            dio_setstate(DVR_SMARTSVR);
+        }
 	}
 }
 
@@ -387,6 +400,22 @@ int net_drop( int fd, char * maddr )
     return 1 ; 
 }
 
+void net_detectSmartServer()
+{
+    static int timer_smartsrv = 0 ;
+    if( g_runtime - timer_smartsrv < 30000 ) 
+        return ;
+    timer_smartsrv = g_runtime ;
+    int diomode = dio_curmode() ;
+    if( diomode == APPMODE_SHUTDOWNDELAY ) {
+        dio_clearstate( DVR_SMARTSVR );
+        msg_sendto( "255.255.255.255", SMART_PORT, SMART_DETECT, strlen(SMART_DETECT));
+        if( smart_server.length() > 2 ) {
+            msg_sendto( smart_server, SMART_PORT, SMART_DETECT, strlen(SMART_DETECT));
+        }
+    }
+}
+
 void *net_thread(void *param)
 {
     struct timeval timeout ;
@@ -492,7 +521,6 @@ void *net_thread(void *param)
             acttime = time_gettick();
         }
         else {		// time out , or error!
-			
 			if( ( time_gettick() - acttime ) > 600000 ) {
 				while( dvrsvr::head != NULL ) {
 					pconn = dvrsvr::head->m_next ;
@@ -504,6 +532,9 @@ void *net_thread(void *param)
 #if defined (TVS_APP) || defined (PWII_APP)
 			dvr_logkey( 0, NULL );
 #endif
+
+            // try to detect smart server ^^
+			net_detectSmartServer();
 
 		}
 
@@ -558,9 +589,9 @@ void net_init()
 		net_multicast_addr = "228.229.230.231" ;
 	}
 	net_join( msgfd, (char *)net_multicast_addr );
-    
-    // get localhost loopback addr
-    net_addr("127.0.0.1", net_port, &loopback);	
+
+    // default unicast smartserver 
+	smart_server = dvrconfig.getvalue("network", "smartserver");
     
     pthread_attr_t attr;
     size_t stacksize = 0 ;

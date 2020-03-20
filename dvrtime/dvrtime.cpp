@@ -16,7 +16,7 @@
 #include "../cfg.h"
 
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 #include "../ioprocess/diomap.h"
 
 #define MCU_SUPPORT
@@ -29,14 +29,6 @@ char ntpserver[] = "pool.ntp.org";
 char nistserver[] = "time.nist.gov";
 
 char dvrconfigfile[] = CFG_FILE;
-
-#ifdef MCU_SUPPORT
-
-struct dio_mmap *p_dio_mmap;
-
-char dvriomap[256] = "/var/dvr/dvriomap";
-
-#endif // MCU_SUPPORT
 
 void inittz()
 {
@@ -264,31 +256,15 @@ int rtctolocal()
 int readmcu(struct tm *t)
 {
 	int res = 0;
-	int fd;
 	int i;
-	char *p;
-	config dvrconfig(dvrconfigfile);
-	string iomapfile = dvrconfig.getvalue("system", "iomapfile");
-	if (iomapfile.length() > 0)
-	{
-		strncpy(dvriomap, iomapfile.getstring(), sizeof(dvriomap));
+
+	if( dio_mmap() == NULL ) {
+		return 0;		// no io map
 	}
-	fd = open(dvriomap, O_RDWR, S_IRWXU);
-	if (fd <= 0)
-	{
-		return 0;
-	}
-	p = (char *)mmap(NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd); // fd no more needed
-	if (p == (char *)-1 || p == NULL)
-	{
-		return 0;
-	}
-	p_dio_mmap = (struct dio_mmap *)p;
 
 	if (p_dio_mmap->iopid <= 0)
 	{ // IO not started !
-		munmap(p_dio_mmap, sizeof(struct dio_mmap));
+		dio_munmap();
 		return 0;
 	}
 
@@ -324,7 +300,7 @@ int readmcu(struct tm *t)
 		mktime(t);
 		res = 1;
 	}
-	munmap(p_dio_mmap, sizeof(struct dio_mmap));
+	dio_munmap();
 	return res;
 }
 
@@ -333,31 +309,15 @@ int readmcu(struct tm *t)
 int writemcu(struct tm *t)
 {
 	int res = 0;
-	int fd;
 	int i;
-	char *p;
-	config dvrconfig(dvrconfigfile);
-	string iomapfile = dvrconfig.getvalue("system", "iomapfile");
-	if (iomapfile.length() > 0)
-	{
-		strncpy(dvriomap, iomapfile.getstring(), sizeof(dvriomap));
+
+	if( dio_mmap() == NULL) {
+		return 0;		// no IO map
 	}
-	fd = open(dvriomap, O_RDWR, S_IRWXU);
-	if (fd <= 0)
-	{
-		return 0;
-	}
-	p = (char *)mmap(NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd); // fd no more needed
-	if (p == (char *)-1 || p == NULL)
-	{
-		return 0;
-	}
-	p_dio_mmap = (struct dio_mmap *)p;
 
 	if (p_dio_mmap->iopid <= 0)
 	{ // IO not started !
-		munmap(p_dio_mmap, sizeof(struct dio_mmap));
+		dio_munmap();
 		return res;
 	}
 
@@ -392,7 +352,7 @@ int writemcu(struct tm *t)
 	{
 		res = 1;
 	}
-	munmap(p_dio_mmap, sizeof(struct dio_mmap));
+	dio_munmap();
 	return res;
 }
 
@@ -474,30 +434,14 @@ int mcutolocal()
 int readgps(struct tm *t)
 {
 	int res = 0;
-	int fd;
-	char *p;
-	config dvrconfig(dvrconfigfile);
-	string iomapfile = dvrconfig.getvalue("system", "iomapfile");
-	if (iomapfile.length() > 0)
-	{
-		strncpy(dvriomap, iomapfile.getstring(), sizeof(dvriomap));
+
+	if( dio_mmap() == NULL ) {
+		return 0;		// no IO map
 	}
-	fd = open(dvriomap, O_RDWR, S_IRWXU);
-	if (fd <= 0)
-	{
-		return 0;
-	}
-	p = (char *)mmap(NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd); // fd no more needed
-	if (p == (char *)-1 || p == NULL)
-	{
-		return 0;
-	}
-	p_dio_mmap = (struct dio_mmap *)p;
 
 	if (p_dio_mmap->iopid <= 0)
 	{ // IO not started !
-		munmap(p_dio_mmap, sizeof(struct dio_mmap));
+		dio_munmap();
 		return res;
 	}
 
@@ -508,7 +452,7 @@ int readgps(struct tm *t)
 		res = 1;
 	}
 
-	munmap(p_dio_mmap, sizeof(struct dio_mmap));
+	dio_munmap();
 	return res;
 }
 

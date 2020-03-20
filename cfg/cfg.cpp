@@ -14,7 +14,7 @@
 #include <stdarg.h>
 
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 const char dvrconfigfile[] = "/etc/dvr/dvr.conf";
 

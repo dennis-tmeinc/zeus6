@@ -14,10 +14,10 @@ TARGET = tdevd tdevmount
 all: $(TARGET)
 
 tdevd : tdevd.o
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
 
 tdevmount : tdevmount.o
-	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $< $(LDFLAGS) $(LDLIBS)
 
 %.o: %.cpp $(HEADERS)
 	$(CC) -c $(CFLAGS) $< -o $@

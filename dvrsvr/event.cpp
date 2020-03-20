@@ -33,9 +33,6 @@ int event_tm_time = 0 ;
 int event_tm = 0;
 
 double g_gpsspeed ;
-float g_fb,g_lr,g_ud;
-int lastpeakchanged=0;
-
 int    g_cpu_usage ;	// 0-100
 
 sensor_t::sensor_t(int n) 
@@ -253,35 +250,8 @@ void event_check()
         g_gpsspeed = 0.0 ;
     }
     
-	int gforce_changed = 0;
-	float fb, lr, ud;
-	get_peak_data( &fb, &lr, &ud );
-	//  dvr_log("fb=%0.2f lr=%0.2f ud=%0.2f",fb,lr,ud);
-	if ((fb != g_fb) || (lr != g_lr) || (ud != g_ud)) {
-		gforce_changed = 1;
-		g_fb = fb;
-		g_lr = lr;
-		g_ud = ud;
-	}    
-    
-    if(lastpeakchanged!=isPeakChanged()){
-		lastpeakchanged=isPeakChanged();
-		gforce_changed = 1;
-    }
-    
     // update decoder screen (OSD)
-    for(i=0; i<cap_channels; i++ ) {
-        cap_channel[i]->update();
-        
-		/* gpsvalid_changed: don't show invalid value */
-		/*
-        cap_channel[i]->update(
-			sensor_toggle || 
-			gpsspeed>2.0 ||
-			gpsvalid_changed ||
-			gforce_changed );
-		*/
-    }
+    cap_update();
     
     // update recording status
     rec_update();			

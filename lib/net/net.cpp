@@ -251,8 +251,7 @@ int net_rrdy( int s, int usdelay)
 	struct pollfd fds;
 	fds.fd = s ;
 	fds.events = POLLIN ;
-	fds.revents = 0 ;
-	return poll( &fds, 1, usdelay/1000 );
+	return poll( &fds, 1, usdelay/1000 )>0;
 }
 
 // ready for send
@@ -261,8 +260,7 @@ int net_srdy( int s, int usdelay)
 	struct pollfd fds;
 	fds.fd = s ;
 	fds.events = POLLOUT ;
-	fds.revents = 0 ;
-	return poll( &fds, 1, usdelay/1000 );
+	return poll( &fds, 1, usdelay/1000 )>0;
 }
 
 int net_send(int s, void * packet, int psize )

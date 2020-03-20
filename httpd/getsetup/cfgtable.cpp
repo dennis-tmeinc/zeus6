@@ -220,6 +220,8 @@ cfg_table network_table[] = {
     {"network", "wifi_dhcp", "wifi_dhcp", 3},
     // set wifi on AP mode (for body camera feature )
     {"network", "wifi_mode", "wifi_mode", 1},
+    // ap network
+    {"network", "ap_network", "ap_network", 0},
     // ap ssid
     {"network", "ap_ssid", "ap_ssid", 0},
     // ap key

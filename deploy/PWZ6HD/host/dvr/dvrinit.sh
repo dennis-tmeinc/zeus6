@@ -3,13 +3,11 @@
 export PATH=/bin:/sbin:/usr/bin:/usr/sbin:/mnt/nand:/mnt/nand/dvr
 export LD_LIBRARY_PATH=/mnt/nand/dvr/lib
 
+#set system clock from rtc
+hwclock -s -u
+
 ifconfig lo 127.0.0.1
 ifconfig eth0 192.168.1.100
-
-# load wifi drivers (station mode)
-/mnt/nand/dvr/drivers/wifi.sh
-
-mkdir -p /var/dvr/disks
 
 # setup DVR configure file
 mkdir /etc/dvr
@@ -19,22 +17,35 @@ hostname `cfg get system hostname`
 if [ ! -f /etc/TZ ] ; then
     timezone=`cfg get system timezone`
     tzx=`cfg get timezones $timezone`
-    echo ${tzx%% *} > /etc/TZ
+    TZ=${tzx%% *}
+    echo $TZ > /etc/TZ
+    export TZ
 fi
+dvrtime rtctoutc
 
 echo "start hotplug"
+mkdir -p /var/dvr/disks
 # start hotplug deamond
 zdaemon tdevd /mnt/nand/dvr/tdevhotplug
 # mount disk already found
 zdaemon tdevmount /mnt/nand/dvr/tdevhotplug
 
-sleep 2
+sleep 1
+
+# load wifi drivers (station mode)
+/mnt/nand/dvr/drivers/wifi.sh
 
 # start io module
 echo "Start IO PROCESS"
 zdaemon ioprocess
 
+# give some time for ioprocess to fully startup
 sleep 2
+
+# gps loggin
+zdaemon glog
+# tab102
+zdaemon tab102
 
 echo "start dvr"
 # start dvr server
@@ -51,6 +62,8 @@ echo "start body camera daemon"
 zdaemon bodycamd
 
 sleep 2
+# enable ip route ^^
+echo 1 > /proc/sys/net/ipv4/ip_forward
 setnetwork
 
 #setup web server

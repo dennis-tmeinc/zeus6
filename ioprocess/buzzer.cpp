@@ -7,12 +7,8 @@
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 #include "diomap.h"
-
-struct dio_mmap *p_dio_mmap;
-
-char dvriomap[256] = "/var/dvr/dvriomap";
 
 // unsigned int outputmap ;	// output pin map cache
 char dvrconfigfile[] = CFG_FILE;
@@ -22,39 +18,17 @@ char dvrconfigfile[] = CFG_FILE;
 //        1 : success
 int appinit()
 {
-    int fd;
-    char *p;
-    config dvrconfig(dvrconfigfile);
-    string v;
-    v = dvrconfig.getvalue("system", "iomapfile");
-    char *iomapfile = v.getstring();
-    if (iomapfile && strlen(iomapfile) > 0)
-    {
-        strncpy(dvriomap, iomapfile, sizeof(dvriomap));
-    }
-    p_dio_mmap = NULL;
-    fd = open(dvriomap, O_RDWR);
-    if (fd <= 0)
-    {
-        printf("Can't open io map file!\n");
+    if( dio_mmap() == NULL ) {
+        // no io map
         return 0;
     }
-    p = (char *)mmap(NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-    close(fd); // fd no more needed
-    if (p == (char *)-1 || p == NULL)
-    {
-        printf("IO memory map failed!");
-        return 0;
-    }
-    p_dio_mmap = (struct dio_mmap *)p;
-    if ((p_dio_mmap->iopid > 0))
+    if (p_dio_mmap->iopid > 0)
     {
         return 1;
     }
     else
     {
-        munmap(p_dio_mmap, sizeof(struct dio_mmap));
-        p_dio_mmap = NULL;
+        dio_munmap();
         return 0;
     }
 }
@@ -62,12 +36,7 @@ int appinit()
 // app finish, clean up
 void appfinish()
 {
-    // clean up shared memory
-    if (p_dio_mmap)
-    {
-        munmap(p_dio_mmap, sizeof(struct dio_mmap));
-        p_dio_mmap = NULL;
-    }
+    dio_munmap();
 }
 
 int main(int argc, char *argv[])

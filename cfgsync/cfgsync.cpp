@@ -15,7 +15,7 @@
 #include <stdarg.h>
 
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 char dvrconfigfile[] = "/mnt/nand/dvr/dvrsvr.conf";
 char defaultconfigfile[] = "/mnt/nand/dvr/default.conf";

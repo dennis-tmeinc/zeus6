@@ -1,29 +1,9 @@
-
-PROJDIR=/home/dennis/proj/dvr/zeus6
 #internal name : PWZ8
-proj=PWZ6HD
-EAGLE=zeus8
 
-# cross compile toolchain for zeus8 board
+proj=pwz8
 
-#TOOLCHAIN=$(PROJDIR)/../toolchain/zeus8/toolchain_gnueabi-4.4.0_ARMv5TE/usr
-TOOLCHAIN=/home/dennis/opt/toolchain
-CROSS_COMPILE_PREFIX=$(TOOLCHAIN)/bin/arm-linux-
+#PROJDIR := /home/dennis/proj/dvr/zeus6
+INCFILE := $(lastword $(MAKEFILE_LIST))
+PROJDIR := $(abspath $(dir $(INCFILE)).)
 
-export CROSS_COMPILE=$(CROSS_COMPILE_PREFIX)
-export CC=$(CROSS_COMPILE_PREFIX)gcc
-export STRIP=$(CROSS_COMPILE_PREFIX)strip
-
-export LD_LIBRARY_PATH=$(TOOLCHAIN)/lib
-
-# dvr specific options
-CFLAGS = -march=armv5te -mthumb -Os -fno-exceptions -I$(PROJDIR) -I$(PROJDIR)/lib 
-LDFLAGS = -L$(PROJDIR)/deploy/$(proj)/host/dvr/lib -L$(PROJDIR)/lib -lfixc++
-
-export CFLAGS
-
-# CFLAGS for PC
-CFLAGS_PC = -I$(PROJDIR) -I$(PROJDIR)/lib 
-
-# debugging folder
-debug_folder=/home/dennis/nfsroot/eagletest
+include $(PROJDIR)/config.$(proj)

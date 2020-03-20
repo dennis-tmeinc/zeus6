@@ -1,119 +1,30 @@
-/* --- Changes ---
- * 09/11/2009 by Harrison
- *   1. Added nodiskcheck
- *      to support temporary disk unmount for tab102
- *
- * 10/23/2009 by Harrison
- *   1. Added dio_hdpower()
- *      to support Hybrid disk
- *
- * 11/03/2009 by Harrison
- *   1. Update OSD when gps_valid changes from 1 to 0
- *
- * 11/20/2009 by Harrison
- *   1. Added semaphore for gps data.
- * 
+/*
+ *  dio.cpp -- digital IO interface
  */
 
-#include "dvr.h"
 #include <sys/mman.h>
 #include <sys/ioctl.h>
 #include <linux/rtc.h>
 #include <errno.h>
 #include <sys/sem.h>
+#include <stdio.h>
 
 #include "../ioprocess/diomap.h"
+#include "dvr.h"
 
-// void dio_lock/dio_unlock
-void dio_lock() {}
-void dio_unlock() {}
-
-struct dio_mmap *p_dio_mmap;
 unsigned int dio_old_inputmap;
-int dio_standby_mode;
+int dio_norecord;
 
-int semid;
-
-#if defined(__GNU_LIBRARY__) && !defined(_SEM_SEMUN_UNDEFINED)
-/* union semun is defined by including <sys/sem.h> */
-#else
-union semun {
-	int val;
-	struct semid_ds *buf;
-	unsigned short int *array;
-	struct seminfo *__buf;
-};
-#endif
-
-static void prepare_semaphore()
+int get_gps_data(struct gps *g)
 {
-	key_t unique_key;
-	union semun options;
-
-	unique_key = ftok("/dev/null", 'a');
-	semid = semget(unique_key, 1, IPC_CREAT | IPC_EXCL | 0666);
-
-	if (semid == -1)
-	{
-		if (errno == EEXIST)
-		{
-			semid = semget(unique_key, 1, 0);
-			if (semid == -1)
-			{
-				fprintf(stderr, "semget error(%s)\n", strerror(errno));
-				exit(1);
-			}
-		}
-		else
-		{
-			fprintf(stderr, "semget error(%s)\n", strerror(errno));
-			exit(1);
-		}
-	}
-	else
-	{
-		options.val = 1;
-		semctl(semid, 0, SETVAL, options);
-	}
-}
-
-void get_gps_data(struct gps *g)
-{
-	struct sembuf sb = {0, -1, 0};
-
-	if (!p_dio_mmap)
-	{
-		g->gps_valid = 0;
-		return;
-	}
-
-	sb.sem_op = -1;
-	semop(semid, &sb, 1);
-
+	dio_lock() ;
 	g->gps_valid = p_dio_mmap->gps_valid;
 	g->gps_speed = p_dio_mmap->gps_speed;
 	g->gps_direction = p_dio_mmap->gps_direction;
 	g->gps_latitude = p_dio_mmap->gps_latitude;
 	g->gps_longitud = p_dio_mmap->gps_longitud;
-	g->gps_gpstime = p_dio_mmap->gps_gpstime;
-
-	sb.sem_op = 1;
-	semop(semid, &sb, 1);
-}
-
-int get_peak_data(float *fb, float *lr, float *ud)
-{
-	if (p_dio_mmap && p_dio_mmap->iopid)
-	{
-		*fb = p_dio_mmap->gforce_forward_d;
-		*lr = p_dio_mmap->gforce_right_d;
-		*ud = p_dio_mmap->gforce_down_d;
-		return 1;
-	}
-	*fb = 0.0;
-	*lr = 0.0;
-	*ud = 0.0;
-	return 0;
+	dio_unlock();
+	return g->gps_valid ;
 }
 
 // return gps knots to mph
@@ -128,14 +39,26 @@ float dio_get_gps_speed()
 
 int dio_get_gforce(float *fb, float *lr, float *ud)
 {
-	return get_peak_data(fb, lr, ud);
+	if (p_dio_mmap)
+	{
+		dio_lock() ;
+		*fb = p_dio_mmap->gforce_forward_d;
+		*lr = p_dio_mmap->gforce_right_d;
+		*ud = p_dio_mmap->gforce_down_d;
+		dio_unlock();
+		return 1;
+	}
+	*fb = 0.0;
+	*lr = 0.0;
+	*ud = 0.0;
+	return 0;
 }
 
-int isPeakChanged()
+int dio_gforce_serial()
 {
-	if (p_dio_mmap && p_dio_mmap->iopid)
+	if (p_dio_mmap)
 	{
-		return p_dio_mmap->gforce_changed;
+		return p_dio_mmap->gforce_serial;
 	}
 	return 0;
 }
@@ -278,16 +201,23 @@ int dio_check()
 
 	if (p_dio_mmap && p_dio_mmap->iopid)
 	{
-		//dio_lock();
+		dio_lock();
 
 		g_nodiskcheck = p_dio_mmap->nodiskcheck;
+		int runmode = p_dio_mmap->current_mode ;
+		if( runmode == APPMODE_RUN || runmode == APPMODE_SHUTDOWNDELAY ) {
+			dio_norecord = 0;
+		}
+		else {
+			dio_norecord = 1;
+			p_dio_mmap->fileclosed = fileclosed();
+		}
 
 		// dvrcmd :  1: restart(resume), 2: suspend, 3: stop record, 4: start record
 		if (p_dio_mmap->dvrcmd == 1)
 		{
 			p_dio_mmap->dvrcmd = 0;
 			app_state = APPRESTART;
-			dio_standby_mode = 0;
 		}
 		else if (p_dio_mmap->dvrcmd == 2)
 		{
@@ -297,21 +227,18 @@ int dio_check()
 		else if (p_dio_mmap->dvrcmd == 3)
 		{
 			p_dio_mmap->dvrcmd = 0;
-			dio_standby_mode = 1;
 			rec_stop();
 		}
 		else if (p_dio_mmap->dvrcmd == 4)
 		{
 			p_dio_mmap->dvrcmd = 0;
-			dio_standby_mode = 0;
 			rec_start();
 		}
-
 		unsigned int inputmap = p_dio_mmap->inputmap;
 		res = (dio_old_inputmap != inputmap);
 		dio_old_inputmap = inputmap;
 
-		//dio_unlock();
+		dio_unlock();
 	}
 	return res;
 }
@@ -926,14 +853,29 @@ void dio_pwii_emg_off()
 void dio_init()
 {
 	int i;
-	int fd;
-	void *p;
-	string iomapfile;
-
-	prepare_semaphore();
 
 	config dvrconfig(dvrconfigfile);
-	iomapfile = dvrconfig.getvalue("system", "iomapfile");
+
+	// map io file
+	if( dio_mmap() == NULL ) {
+		dvr_log("IO module failed!");
+		exit(1);
+	}
+	// wait for ioprocess to run
+	for (i = 0; i < 10; i++)
+	{
+		if (p_dio_mmap->iopid)
+		{
+			p_dio_mmap->dvrpid = getpid();
+			p_dio_mmap->dvrwatchdog = 0;
+			p_dio_mmap->usage++;
+			// initialize dvrsvr communications
+			p_dio_mmap->dvrcmd = 0;
+			p_dio_mmap->dvrstatus = DVR_RUN;
+			break;	 // success
+		}
+		sleep(1); // wait for 10 seconds
+	}
 
 #ifdef PWII_APP
 	pwii_front_ch = dvrconfig.getvalueint("pwii", "front");
@@ -945,53 +887,8 @@ void dio_init()
 #endif
 
 	dio_old_inputmap = 0;
-	dio_standby_mode = 0;
+	dio_norecord = 0;
 
-	p_dio_mmap = NULL;
-	if (iomapfile.length() == 0)
-	{
-		return; // no DIO.
-	}
-	for (i = 0; i < 10; i++)
-	{ // retry 10 times
-		fd = open(iomapfile.getstring(), O_RDWR);
-		if (fd > 0)
-		{
-			break;
-		}
-		sleep(1);
-	}
-	if (fd <= 0)
-	{
-		dvr_log("IO module not started!");
-		return;
-	}
-
-	p = mmap(NULL, sizeof(struct dio_mmap), PROT_READ | PROT_WRITE, MAP_SHARED, fd, 0);
-	close(fd); // don't need fd to use memory map.
-	if (p == (void *)-1 || p == NULL)
-	{
-		dvr_log("IO memory map failed!");
-		return;
-	}
-	p_dio_mmap = (struct dio_mmap *)p;
-	for (i = 0; i < 10; i++)
-	{
-		if (p_dio_mmap->iopid)
-		{
-			p_dio_mmap->lockpower = 0;
-			p_dio_mmap->dvrpid = getpid();
-			p_dio_mmap->dvrwatchdog = 0;
-			p_dio_mmap->usage++;
-			// initialize dvrsvr communications
-			p_dio_mmap->dvrcmd = 0;
-			p_dio_mmap->dvrstatus = DVR_RUN;
-			return; // success
-		}
-		sleep(1); // wait for 10 seconds
-	}
-	munmap(p_dio_mmap, sizeof(struct dio_mmap));
-	p_dio_mmap = NULL;
 	return;
 }
 
@@ -1000,12 +897,10 @@ void dio_uninit()
 	if (p_dio_mmap)
 	{
 		dio_unlockpower();
-		// p_dio_mmap->dvrpid = 0 ;
+		p_dio_mmap->dvrpid = 0 ;
 		p_dio_mmap->usage--;
-		p_dio_mmap->dvrcmd = 0;
 		//p_dio_mmap->dvrstatus = 0 ;
 		// p_dio_mmap->dvrwatchdog = -1 ;
-		munmap(p_dio_mmap, sizeof(struct dio_mmap));
-		p_dio_mmap = NULL;
+		dio_munmap();
 	}
 }

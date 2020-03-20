@@ -33,7 +33,7 @@ $(function(){
     function loadData( xid ) {
         $("form")[0].reset();
         $("input[name=\"bodycamid\"]").val( xid );
-        $.getJSON( "bodycam_value_"+xid , {"s":Math.random()}, function(data){
+        $.post( "bodycam_value_"+xid , {"s":Math.random()}, function(data){
             if( data.bodycamid == xid ) {
                 if( sessionStorage ) {
                     sessionStorage.bodycamid = xid;
@@ -42,7 +42,7 @@ $(function(){
                 JSONinitfield( data );
                 $("select#id_nextbodycamid" ).selectmenu( "refresh" );
             }
-        });
+        }, "json");
     }
 
     var camid = 1 ;

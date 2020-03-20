@@ -9,15 +9,15 @@ SOURCES=livecam.cpp $(PROJDIR)/lib/net/net.cpp
 HEADERS=
 
 EXTSOURCES=$(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/string.cpp $(PROJDIR)/dvrsvr/crypt.cpp
-EXTHEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h
+EXTHEADERS=$(PROJDIR)/dvrsvr/config.h $(PROJDIR)/dvrsvr/genclass.h
 
 OBJS = $(patsubst %.cpp, %.o, $(SOURCES))
 OBJS += $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
-LDFLAGS += -lcrypt
+LDLIBS += -lcrypt
 
 mp4live : $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 %.o : %.cpp $(HEADERS) $(EXTHEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@

@@ -1,4 +1,4 @@
-#!/bin/sh
+#!/bin/bash
 
 if [ $# -lt 2 ]; then
   echo 'Usage mkdeploy <APPID> <boardnumber>'
@@ -6,13 +6,12 @@ if [ $# -lt 2 ]; then
 fi
 
 DEPROOT=$PWD
-BASEROOT=${DEPROOT}/../..
-PATH=${BASEROOT}/deploy/util:${PATH}
+BASEROOT=../..
 
 if [ -f ${BASEROOT}/release ] ; then
-RELEASE=`cat ${BASEROOT}/release`
+  RELEASE=`cat ${BASEROOT}/release`
 else
-RELEASE=`date +%y.%m%d.%H`
+  RELEASE=`date +%y.%m%d.%H`
 fi
 
 OUTPUTDIR=${DEPROOT}/${RELEASE}
@@ -20,69 +19,75 @@ OUTPUTDIR=${DEPROOT}/${RELEASE}
 appid=$1
 
 RELEASEFILES='
-    dvrsvr/dvrsvr
-    dvrtime/dvrtime
-    eaglehost/eaglehost
-    glog/glog
-    ioprocess/ioprocess
-    ioprocess/devicepower
-    ioprocess/panelled
-    ioprocess/buzzer
-    tdev/tdevd
-    tdev/tdevmount
-    dhcp/udhcpd
-    usbgenkey/usbcheck
-    tmeft/tmefile
-    volumeid/md5check
-    volumeid/volumeid
-    cfg/cfg
-    tab102/tab102
-    smartupload/smartftp
-    fw_env/fw_printenv
-    lpc21isp/lpc21isp
-    rconn/rconn
-    zdaemon/zdaemon
-    fat32vol/fat32vol
-    httpd/eaglehttpd
-    bodycamd/bodycamd
+  dvrsvr/dvrsvr
+  dvrtime/dvrtime
+  eaglehost/eaglehost
+  glog/glog
+  ioprocess/ioprocess
+  ioprocess/devicepower
+  ioprocess/panelled
+  ioprocess/buzzer
+  tdev/tdevd
+  tdev/tdevmount
+  dhcp/udhcpd
+  usbgenkey/usbcheck
+  tmeft/tmefile
+  volumeid/md5check
+  volumeid/volumeid
+  cfg/cfg
+  tab102/tab102
+  smartupload/smartftp
+  fw_env/fw_printenv
+  lpc21isp/lpc21isp
+  rconn/rconn
+  zdaemon/zdaemon
+  fat32vol/fat32vol
+  httpd/eaglehttpd
+  bodycamd/bodycamd
 '
 
 CGIFILES='
- /httpd/getsetup/getsetup
- /httpd/getsetup/applysetup
- /httpd/cfgdown/cfgdown.cgi
- /httpd/cfgdown/cfgreport
- /httpd/cfgdown/dvrstatus.cgi
- /httpd/cfgdown/gcal.cgi
- /httpd/cfgdown/gcrash.cgi
- /httpd/eagle_setup/cfgupload
- /httpd/eagle_setup/firmwareupd
- /httpd/eagle_setup/login
- /httpd/eagle_setup/loginx
- /httpd/eagle_setup/mcufwupd
- /httpd/eagle_setup/mfid
- /httpd/eagle_setup/pagevalue
- /httpd/livecam/mp4live
+  /httpd/getsetup/getsetup
+  /httpd/getsetup/applysetup
+  /httpd/cfgdown/cfgdown.cgi
+  /httpd/cfgdown/cfgreport
+  /httpd/cfgdown/dvrstatus.cgi
+  /httpd/cfgdown/gcal.cgi
+  /httpd/cfgdown/gcrash.cgi
+  /httpd/eagle_setup/cfgupload
+  /httpd/eagle_setup/firmwareupd
+  /httpd/eagle_setup/login
+  /httpd/eagle_setup/loginx
+  /httpd/eagle_setup/mcufwupd
+  /httpd/eagle_setup/mfid
+  /httpd/eagle_setup/pagevalue
+  /httpd/livecam/mp4live
 '
 
 if [ ${appid} = "clean" ]; then
+  rm -v -f sfx
+  rm -v -f mksfx
 
-# clean host binary files
-    echo "Clean dvr host programs"
-    cd ${DEPROOT}/host/dvr
-    for rfile in $RELEASEFILES ; do
-        BASE=`basename ${rfile}`
-        rm ${BASE}
-    done
+  # clean host binary files
+  echo "Clean dvr host programs"
+  TARGETDIR=host/dvr
+  for rfile in $RELEASEFILES ; do
+    BASE=${TARGETDIR}/`basename ${rfile}`
+    if [ -f ${BASE} ]; then
+      rm -v ${BASE}
+    fi
+  done
 
-    echo "Clean dvr web cgi programs"
-    cd ${DEPROOT}/host/dvr/www/cgi
-    for rfile in $CGIFILES ; do
-        BASE=`basename ${rfile}`
-        rm ${BASE}
-    done
+  echo "Clean dvr web cgi programs"
+  TARGETDIR=host/dvr/www/cgi
+  for rfile in $CGIFILES ; do
+    BASE=${TARGETDIR}/`basename ${rfile}`
+    if [ -f ${BASE} ]; then
+      rm -v ${BASE}
+    fi
+  done
 
-    exit 0
+  exit 0
 fi
 
 if [ -z $2 ] ; then
@@ -91,45 +96,44 @@ else
   boardnumber=$2
 fi
 
-mkdir ${OUTPUTDIR}
+mkdir -p ${OUTPUTDIR}
 
 firmwareid=${appid}.1.0.${RELEASE}
 echo "Firmware ID: " $firmwareid
 
-cd ${DEPROOT}
+TARGETDIR=.
 echo copy sfx files
-cp -v ${BASEROOT}/sfx/sfx .
-cp -v ${BASEROOT}/sfx/mksfx .
-${STRIP} sfx
+ln -f -v ${BASEROOT}/sfx/sfx ${TARGETDIR}
+ln -f -v ${BASEROOT}/sfx/mksfx ${TARGETDIR}
+${STRIP} ${TARGETDIR}/sfx
 
-cd ${DEPROOT}/host/ID
-echo ${boardnumber} > BOARDNUM
-echo ${appid} > APPID
-echo 1 > BOARDID
+TARGETDIR=host/ID
+echo ${boardnumber} > ${TARGETDIR}/BOARDNUM
+echo ${appid} > ${TARGETDIR}/APPID
+echo 1 > ${TARGETDIR}/BOARDID
 
 echo Building Host deploy firmware.
-cd ${DEPROOT}/host
-cp -v ${BASEROOT}/dosfsck_check/dosfsckcheck .
+TARGETDIR=host
+ln -f -v ${BASEROOT}/dosfsck_check/dosfsckcheck ${TARGETDIR}/
+${STRIP} ${TARGETDIR}/dosfsckcheck
 
-cd ${DEPROOT}/host/dvr
+TARGETDIR=host/dvr
 echo copy dvr host files
 for rfile in $RELEASEFILES ; do
-    BASE=`basename ${rfile}`
-    cp -v ${BASEROOT}/${rfile} .
-    ${STRIP} ${BASE}
+  BASE=`basename ${rfile}`
+  ln -v -f ${BASEROOT}/${rfile} ${TARGETDIR}/${BASE}
+  ${STRIP} ${TARGETDIR}/${BASE}
 done
 
 echo "Copy web files..."
 
 # cgi files
-mkdir www
-cd www
-mkdir cgi
-cd cgi
+TARGETDIR=host/dvr/www/cgi
+mkdir -p ${TARGETDIR}
 for cfile in $CGIFILES ; do
-    BASE=`basename ${cfile}`
-    cp -v ${BASEROOT}${cfile} .
-    ${STRIP} ${BASE}
+  BASE=`basename ${cfile}`
+  ln -v -f ${BASEROOT}${cfile} ${TARGETDIR}/${BASE}
+  ${STRIP} ${TARGETDIR}/${BASE}
 done
 
 cd ${DEPROOT}/host

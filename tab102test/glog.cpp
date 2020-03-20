@@ -37,7 +37,7 @@
 
 #include "../dvrsvr/eagle32/davinci_sdk.h"
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 #include "../ioprocess/diomap.h"
 
 #include "../cfg.h"
@@ -46,6 +46,7 @@ struct baud_table_t {
 	speed_t baudv ;
 	int baudrate ;
 } baud_table[] = {
+	{ B460800,	460800},
 	{ B230400,	230400},
 	{ B115200,	115200},
 	{ B57600,	57600},
@@ -56,7 +57,6 @@ struct baud_table_t {
 	{ B2400, 	2400},
 	{ B1800,    1800},
 	{ B1200, 	1200},
-	{ B600,     600},
 	{ B0,       0}
 } ;
 

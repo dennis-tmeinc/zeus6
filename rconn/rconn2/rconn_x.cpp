@@ -20,7 +20,7 @@
 
 #include "../cfg.h"
 #include "../dvrsvr/genclass.h"
-#include "../dvrsvr/cfg.h"
+#include "../dvrsvr/config.h"
 
 int     g_nointernetaccess ;	// no internet access
 int     g_running ;			// global running connections 

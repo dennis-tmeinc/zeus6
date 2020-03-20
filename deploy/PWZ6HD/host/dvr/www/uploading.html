@@ -28,13 +28,17 @@ function timefunc()
 
 function ulprog( ul )
 {
-  var elm=document.getElementById("id_progbar") ;
-  elm.style.width=parseFloat(ul).toString()+"%" ;
-  elm.innerHTML=parseInt(ul).toString()+"%" ;
-  setTimeout("timefunc()", 100);
+  var w = parseInt(ul); 
+  if( w>0 && w<100) {
+    w = w.toString()+"%" ;
+    var elm=document.getElementById("id_progbar") ;
+    elm.style.width=w ;
+    elm.innerHTML=w;
+  }
+  setTimeout("timefunc()", 300);
 }
 
-setTimeout("timefunc()", 200);
+setTimeout("ulprog(1)",2000);
 
 </script>
 </body>

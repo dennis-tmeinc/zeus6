@@ -1,0 +1,187 @@
+// string and string list
+// string functions
+
+#ifndef __ARRAY_H__
+#define __ARRAY_H__
+
+#define ARRAYSTEPSIZE (50)
+
+// dynamic growable array
+template <class T>
+class array {
+protected:
+	T** m_array;
+	int m_size;		 // valid number of item
+	int m_arraysize; // availabel items space
+
+	// swap items of index a and b
+	void swap(int a, int b)
+	{
+		T *s;
+		s = m_array[a];
+		m_array[a] = m_array[b];
+		m_array[b] = s;
+	}
+
+	void quicksort(int lo, int hi)
+	{
+		int i = lo, j = hi - 1;
+		while (i <= j) {
+			while (i <= j && *m_array[i] < *m_array[hi]) {
+				i++;
+			}
+			while (j > i && (!(*m_array[j] < *m_array[hi]))) {
+				j--;
+			}
+			if (i < j) {
+				swap(i, j);
+				i++;
+			}
+			j--;
+		}
+		if (i < hi) {
+			swap(i, hi);
+		}
+		if (lo < i - 1) {
+			quicksort(lo, i - 1);
+		}
+		if (hi > i + 1) {
+			quicksort(i + 1, hi);
+		}
+	}
+
+	// expand array space
+	void expand(int newsize)
+	{
+		if (newsize > m_arraysize) {
+			newsize += ARRAYSTEPSIZE;
+			T** newarray = new T*[newsize];
+			if (m_size > 0 && m_array != NULL) {
+				for (int i = 0; i < m_size; i++) {
+					newarray[i] = m_array[i];
+				}
+			}
+			if (m_array != NULL)
+				delete[] m_array;
+			m_arraysize = newsize;
+			m_array = newarray;
+		}
+	}
+	
+public:
+	array()
+	{
+		m_arraysize = ARRAYSTEPSIZE;
+		m_array = new T*[m_arraysize];
+		m_size = 0 ;
+	}
+
+	~array()
+	{
+		clean();
+		if (m_array != NULL ) {
+			delete[] m_array;
+		}
+	}
+
+	int size()
+	{
+		return m_size;
+	}
+
+	void setsize(int newsize)
+	{
+		expand(newsize);
+		while( newsize > m_size ) {
+			m_array[m_size++] = new T ;
+		}
+		while( newsize < m_size ) {
+			delete m_array[--m_size] ;
+		}
+		m_size = newsize;
+	}
+
+	T* at(int index)
+	{
+		if (index >= m_size) {
+			setsize(index + 1);
+		}
+		return m_array[index];
+	}
+
+	T& operator[](int index)
+	{
+		return *this->at(index);
+	}
+
+	T& insert(T& t, int pos)
+	{
+		if( pos<m_size) {
+			expand(m_size + 1);
+			for (int i = m_size; i > pos; i--) {
+				m_array[i] = m_array[i - 1];
+			}
+			m_array[pos] = new T ;
+			m_size++;			
+		}
+		*at(pos) = t;
+		return *this->at(pos);
+	}
+
+	T& add(T& t)
+	{
+		return insert(t, m_size);
+	}
+
+	void remove(int pos)
+	{
+		if (pos >= 0 && pos < m_size) {
+			delete m_array[pos];
+			for( ; pos < m_size-1; pos++) {
+				m_array[pos] = m_array[pos + 1];
+			}
+			m_size--;
+		}
+	}
+
+	void remove(T* pos)
+	{
+		int i;
+		for (i = 0; i < m_size; i++) {
+			if( m_array[i] == pos) {
+				remove(i);
+				break;
+			}
+		}
+	}
+
+	void clean()
+	{
+		while(m_size>0) {
+			delete m_array[--m_size];
+		}		
+	}
+	
+	void compact()
+	{
+	}
+
+	void sort()
+	{
+		expand(m_size + 1);
+		if (m_size > 1) {
+			quicksort(0, m_size - 1);
+		}
+	}
+	
+	array<T>& operator=(array<T>& a)
+	{
+		setsize(a.size());
+		for (int i = 0; i < m_size; i++) {
+			*m_array[i] = a[i];
+		}
+		return *this;
+	}
+};
+
+#endif // __ARRAY_H__

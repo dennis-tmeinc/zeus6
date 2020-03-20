@@ -5,7 +5,7 @@ include ../config
 
 SOURCES=glog.cpp
 
-EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
+EXTHEADERS=../dvrsvr/config.h ../dvrsvr/genclass.h ../ioprocess/diomap.h
 EXTSOURCES=../dvrsvr/config.cpp ../dvrsvr/string.cpp
 
 HEADERS=

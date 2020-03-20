@@ -54,14 +54,14 @@ if [ "$wifi_mode" -eq 2 ]; then
     fi
 
     # kill wap_supplicant if it is running
-    if [ ! -f /var/run/wpa_cli.pid ]; then
+    if [ -f /var/run/wpa_cli.pid ]; then
         kill `cat /var/run/wpa_cli.pid`
     fi
     if [ -f /var/run/wpa_supplicant.pid ]; then
         kill `cat /var/run/wpa_supplicant.pid`
     fi
 
-    # remode station driver
+    # remove station driver
     ifconfig wlan0 down
     rmmod mt7662u_sta
 
@@ -73,18 +73,19 @@ if [ "$wifi_mode" -eq 2 ]; then
     # load hostapd
     if [ -e /sys/class/net/wlan0 ] ; then
 
-        ap_ip=`cfg get network ap_ip`
-        ap_mask=`cfg get network ap_mask`
-        ap_broadcast=`cfg get network ap_broadcast`
-        ap_dhcpstart=`cfg get network ap_dhcpstart`
-        ap_dhcpend=`cfg get network ap_dhcpend`
-        if [ -z "$ap_ip" ] ; then
-            ap_ip=192.168.3.1
-            ap_mask=255.255.255.0
-            ap_broadcast=192.168.3.255
-            ap_dhcpstart=192.168.3.200
-            ap_dhcpend=192.168.3.254
+        # will restart later
+        killall udhcpd
+
+        ap_network=`cfg get network ap_network`
+        if [ -z "$ap_network" ] ; then
+            ap_network=192.168.3.0
         fi
+
+        ap_mask=255.255.255.0
+        ap_ip=${ap_network%.*}.1
+        ap_broadcast=${ap_network%.*}.255
+        ap_dhcpstart=${ap_network%.*}.200
+        ap_dhcpend=${ap_network%.*}.250
 
         ifconfig wlan0 down
         ifconfig wlan0 $ap_ip netmask $ap_mask broadcast $ap_broadcast up
@@ -110,20 +111,22 @@ if [ "$wifi_mode" -eq 2 ]; then
 
         # remove host apd if running
         if [ -e /var/run/hostapd.pid ]; then
-            # let udhcpd reload config file
+            # let hostapd reload config file
             kill -HUP `cat /var/run/hostapd.pid`
         else
             # start hostapd
             /davinci/dvr/hostapd -B -P/var/run/hostapd.pid /var/run/hostapd.conf
-
-            # start udhcpd, (looks like this is required for bodycam connection)
-            echo "" /var/run/udhcpd.leases
-            cp  /davinci/dvr/udhcpd.conf  /var/run/udhcpd.conf
-            echo  "start $ap_dhcpstart" >> /var/run/udhcpd.conf
-            echo  "end $ap_dhcpend" >> /var/run/udhcpd.conf
-            echo  "option router $ap_ip" >> /var/run/udhcpd.conf
-            /davinci/dvr/udhcpd /var/run/udhcpd.conf
         fi
+
+        rm -f /var/run/udhcpd.conf
+        cp  /davinci/dvr/udhcpd.conf /var/run/udhcpd.conf
+        echo  "start $ap_dhcpstart" >> /var/run/udhcpd.conf
+        echo  "end $ap_dhcpend" >> /var/run/udhcpd.conf
+        echo  "option router $ap_ip" >> /var/run/udhcpd.conf
+
+        # start udhcpd
+        echo "" > /var/run/udhcpd.leases
+        /davinci/dvr/udhcpd /var/run/udhcpd.conf
 
     fi
 
@@ -204,3 +207,4 @@ if [ -z "$gateway" ]; then
     gateway=192.168.1.1
 fi
 route add default gw $gateway
+

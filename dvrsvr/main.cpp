@@ -18,6 +18,7 @@ static pthread_mutex_t dvr_mutex;
 int system_shutdown;
 
 int app_state;				// APPQUIT, APPUP, APPDOWN, APPRESTART
+int g_runtime;              // mono clock in millis
 
 int g_lowmemory ;
 
@@ -826,6 +827,8 @@ void app_init()
 
 }
 
+int build_year = 2019 ;
+
 // app startup
 void app_start() 
 {
@@ -842,6 +845,9 @@ void app_start()
         fprintf(fpid, "%d", (int)getpid());
         fclose(fpid);
 	}
+
+	// set build year
+	sscanf( __DATE__ + 7 , "%d", &build_year );
 
 	// setup signal handler	
 	signal(SIGQUIT, sig_handler);
@@ -936,6 +942,8 @@ int main(int argc, char **argv)
     struct timeval time1, time2 ;
     int    t_diff ;
     
+    g_runtime = time_gettick();
+
     // app startup
 	app_start() ;
     
@@ -943,6 +951,7 @@ int main(int argc, char **argv)
     app_state = APPUP ;
 
     while( app_state!=APPQUIT ) {
+        g_runtime = time_gettick();
         if( app_state == APPUP ) {  // application up
             serial++ ;
             if( app_ostate != APPUP ) {
@@ -990,14 +999,6 @@ int main(int argc, char **argv)
             usleep( 100 );
         }
         sig_check();
-
-        if(dio_poweroff()){
-            if(fileclosed()){
-                 dio_setfileclose(1);
-            } else {
-                 dio_setfileclose(0);
-            }
-        }
 
     }
     

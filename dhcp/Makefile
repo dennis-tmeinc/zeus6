@@ -3,7 +3,11 @@
 
 include ../config
 
-CFLAGS += -mthumb
+export CROSS_COMPILE 
+export CC
+export STRIP i
+export CFLAGS
+export LDFLAGS
 
 default: all
 
@@ -12,16 +16,16 @@ src:
 	echo 1 > src
 
 udhcpc: src
-	$(MAKE) -j -C udhcp udhcpc
-	cp udhcp/udhcpc .
+	$(MAKE) -C udhcp udhcpc
+	ln -v -f udhcp/udhcpc .
 
 udhcpd: src
-	$(MAKE) -j -C udhcp udhcpd
-	cp udhcp/udhcpd .
+	$(MAKE) -C udhcp udhcpd
+	ln -v -f udhcp/udhcpd .
 
 all: src
-	$(MAKE) -j -C udhcp
-	cp udhcp/udhcpd .
+	$(MAKE) -C udhcp
+	ln -v -f udhcp/udhcpd .
 
 clean:
 	rm -f -r udhcp

@@ -24,7 +24,7 @@ protected:
 	char* valueString;
 	char* name;
 
-	json* next;  // next item in the same object or array
+	json* next;  // next item (sibling) in the same object or array
 	json* child; // first child items of this object or array
 
 private:
@@ -66,32 +66,36 @@ public:
 	json& setFalse() { return setType(JSON_False); }
 	json& setNumber(double dvalue);
 	json& setNumber(int ivalue) { return setNumber((double)ivalue); }
+	json& setNumber(long long ivalue) { return setNumber((double)ivalue); }
 	double getNumber();
 	int getInt() { return (int)getNumber(); }
 	json& setString(const char* value);
 	const char* getString();
 
 	json& addItem(json* item);							// add a child item
+	json& addNumberItem(double dvalue) // add a number item to array
+	{
+		return addItem(&(new json())->setNumber(dvalue));
+	}
 	json& addNumberItem(const char* nam, double dvalue) // add a number item to object
 	{
 		return addItem(&(new json())->setNumber(dvalue).setName(nam));
 	}
-	json& addNumberItem(double dvalue) // add a number item to array
+	json& addStringItem(const char* string) // add a string item to array
 	{
-		return addItem(&(new json())->setNumber(dvalue));
+		return addItem(&(new json())->setString(string));
 	}
 	json& addStringItem(const char* nam,
 		const char* string) // add a string item to object
 	{
 		return addItem(&(new json())->setString(string).setName(nam));
 	}
-	json& addStringItem(const char* string) // add a string item to array
-	{
-		return addItem(&(new json())->setString(string));
-	}
 	int itemSize();					 // get number of children items
 	json* getItem(int index);		 // get item with index (for array)
 	json* getItem(const char* name); // get item with name (for objects)
+	json* getLeaf(const char* leaf, char seperator = '/');	// get a leaf; ex:"resourceSets/0/resources/0/address/formattedAddress"
+	const char * getLeafString(const char* leaf, char seperator = '/');
+	double getLeafNumber(const char* leaf, char seperator = '/');
 
 	int isNull() { return type == JSON_Null; }
 	int isTrue() { return type == JSON_True; }

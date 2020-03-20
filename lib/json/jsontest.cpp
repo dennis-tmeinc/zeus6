@@ -1,7 +1,7 @@
 #include "json.h"
 #include <stdio.h>
 
-void memtes()
+void memtest()
 {
 	char * p ;
 	p = new char [1] ;
@@ -28,7 +28,7 @@ int main()
 	int n;
 	char* text;
 
-	memtes();
+	memtest();
 
 	text = new char[8004];
 	FILE* f = fopen("j.txt", "r");
@@ -45,7 +45,7 @@ int main()
 	json* j = new json();
 	j->parse(text);
 
-	n = j->encode(text, 5000);
+	n = j->encode(text, 5000, 1);
 
 	fwrite(text, 1, n, stdout);
 	fwrite("\n", 1, 1, stdout);

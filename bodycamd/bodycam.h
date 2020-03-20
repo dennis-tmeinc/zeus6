@@ -4,10 +4,11 @@
 #define MAX_BODYCAM (16)
 
 extern int g_runtime;
+extern int g_log;
 
 int runtime();
 void setMaxWait(int ms);
-time_t getTime(char *timebuf);
+time_t getTime(char* timebuf);
 
 void local_sendVKRec();
 
@@ -18,6 +19,8 @@ void local_sendVKRec();
 #define ID_AMBA_STOP_SESSION (258)
 #define ID_AMBA_RECORD_START (513)
 #define ID_AMBA_RECORD_STOP (514)
+#define ID_AMBA_PHOTOGRAPH (769)
+#define ID_AMBA_QUERY_SESSION_HOLDER (1793)
 
 // AMBA settings types
 #define AMBA_SETTING_TYPE_CLOCK ("camera_clock")
@@ -32,49 +35,54 @@ void local_sendVKRec();
 
 #define BODYCAM_RECVBUFSIZE (2048)
 
-class bodycam
-{
-  private:
-	string camip; // camera ip or host name
-	int camport;  // camera control port
-	int sock;
-	struct pollfd *sfd; // poll event
-	int activetime;		// io time
-	int waittime;		// idle time to wait for next getStatus ( ping )
+class bodycam {
+private:
+    int enable; // enable?
+    string camip; // camera ip or host name
+    int camport; // camera control port
+    int sock;
+    struct pollfd* sfd; // poll event
+    int srdy; // socket ready to send
 
-	int msg_token; // session number return from camera
+    int state; // state machine: 0=start, 1=wait for response, 2=sync time, 3=get app_status, 4=idle
+    int activetime; // io time
+    int waittime; // idle time to wait for next getStatus ( ping )
 
-	int enable;			// enable?
-	int dvrTrigger;		// trigger (bodycam) recording by DVR%
-	int bodycamTrigger; // trigger (DVR) recording by bodycam
-	int recordmode;		// body camera recording mode, 0: not recording, 1: by bodycam buttons, 2: trigger by DVR
+    int msg_token; // session number return from camera
 
-	// dio mapping
-	int *dvr_status;
-	int *rec_trigger;
-	int *rec_button;
-	int *rec_status;
+    int dvrTrigger; // trigger (bodycam) recording by DVR%
+    int bodycamTrigger; // trigger (DVR) recording by bodycam
+    int recordmode; // body camera recording mode, 0: not recording, 1: by bodycam buttons, 2: trigger by DVR
 
-	int save_trigger;
-	int save_button;
-	int save_status;
+    // dio mapping
+    int* dvr_status;
+    int* rec_trigger;
+    int* rec_button;
+    int* rec_status;
+    int* bodycam_status; // bit 0: connected, bit 1: recording
 
-	char recvBuf[BODYCAM_RECVBUFSIZE];
-	int recvPos;
+    int save_trigger;
+    int save_button;
+    int save_status;
 
-  public:
-	bodycam(int num); // num: serial number of camera, start form 1
-	virtual ~bodycam();
+    char recvBuf[BODYCAM_RECVBUFSIZE];
+    int recvPos;
+
+    int sent_msgid;
+
+public:
+    bodycam();
+    ~bodycam();
+
+    void init(int num);
 
 	int dvrRec;
 	// DVR recording triggered? 0: 1: triggered
 	int isDVRTriggered()
 	{
-		if (dvr_status != NULL)
-		{
+		if (dvr_status != NULL) {
 			int r = (*dvr_status) & 2;
-			if (dvrRec != r)
-			{
+			if (dvrRec != r) {
 				dvrRec = r;
 				return 1;
 			}
@@ -85,30 +93,31 @@ class bodycam
 	//
 
 	// methods
-	int process();
-	int setpoll(struct pollfd *pfd, int max);
+    int process();
+    int setpoll(struct pollfd* pfd, int max);
 
-	void wait(int idlems); // wait for next process (getStatus)
+    void wait(int idlems); // wait for next process (getStatus)
 
-  protected:
-	int sendCmd(int msg_id);
-	int sendCmd(int msg_id, const char *type);
-	int sendCmd(int msg_id, const char *type, const char *param);
+protected:
+    int sendCmd(int msg_id, const char* type = NULL, const char* param = NULL);
+    int sendRsp(int msg_id, int rval);
 
-	void onrecv();
-	void onKeyInput(char *keyInput);
+    void onrecv();
+    void onKeyInput(char* keyInput);
 
-	void onRecord();
-	void onStop();
+    void onRecord();
+    void onStop();
 
-	void getStatus();
-	void startRecord();
-	void stopRecord();
-	void syncTime();
+    void getStatus();
+    void startRecord();
+    void stopRecord();
+    void syncTime();
 
-	int send(char *buf);
-	int receive();
-	int getSession();
+    int send(char* buf);
+    int receive();
+    int getSession();
+
+    void log(const char* fmt, ...);
 };
 
 #endif

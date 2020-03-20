@@ -260,7 +260,6 @@ struct dio_mmap * dio_mmap(char * mmapfile=NULL);
 void dio_munmap();
 
 
-
 // PWII key codes
 
 enum e_keycode {

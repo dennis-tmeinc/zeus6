@@ -4,27 +4,28 @@ include ../config
 
 SOURCES=cfg.cpp
 
-EXTHEADERS=$(PROJDIR)/dvrsvr/cfg.h $(PROJDIR)/dvrsvr/genclass.h
+EXTHEADERS=$(PROJDIR)/dvrsvr/config.h $(PROJDIR)/dvrsvr/genclass.h
 EXTSOURCES=$(PROJDIR)/dvrsvr/config.cpp $(PROJDIR)/dvrsvr/string.cpp
 
-HEADERS=
+HEADERS=\
+		$(PROJDIR)/lib/util/string.h\
+		$(PROJDIR)/lib/util/array.h
+
 
 OBJS  = $(patsubst %.cpp, %.o, $(SOURCES))
 OBJS += $(patsubst %.cpp, %.o, $(EXTSOURCES))
 
-CFLAGS+= -I../dvrsvr
-
 all : cfg cfgpc
 
 cfg : $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS)
+	$(CC) $(CFLAGS) -o $@ $^ $(LDFLAGS) $(LDLIBS)
 
 cfgpc :$(SOURCES) $(EXTSOURCES)
-	gcc -o $@ $^ -lstdc++
+	gcc $(CFLAGS_PC) -o $@ $^ -lstdc++
 
 #.cpp.o:
 %.o : %.cpp $(HEADERS) $(EXTHEADERS)
-	$(CC) $(CFLAGS) -c $< -o $@
+	$(CC) $(CPPFLAGS) $(CFLAGS) -c $< -o $@
 
 clean :
 	rm -f *.o

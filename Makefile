@@ -4,7 +4,8 @@
 
 include config
 
-SUBDIRS = cfg\
+SUBDIRS = lib\
+    cfg\
     dvrsvr\
     dvrtime\
     eaglehost\
@@ -20,6 +21,7 @@ SUBDIRS = cfg\
     lpc21isp\
     smartupload\
     filert\
+    tmeft\
     zdaemon\
     rconn\
     fat32vol\

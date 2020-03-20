@@ -9,7 +9,7 @@ SOURCES=rconn.cpp adbclient.cpp channel.cpp
 HEADERS=rconn.h adbclient.h channel.h
 
 EXTSOURCES=../dvrsvr/config.cpp ../net/net.cpp
-EXTHEADERS=../dvrsvr/cfg.h ../dvrsvr/genclass.h ../net/net.h
+EXTHEADERS=../dvrsvr/config.h ../dvrsvr/genclass.h ../net/net.h
 
 CFLAGS += -Os -DANDROID_CLIENT 
 LDFLAGS += -lpthread

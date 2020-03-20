@@ -6,9 +6,22 @@
 #include <stdlib.h>
 #include <string.h>
 
-extern "C" void __cxa_pure_virtual()
+namespace __cxxabiv1 {
+
+extern "C" void
+__cxa_pure_virtual (void)
 {
-    const char * err = "Pure virtual function called!\n" ;
+    const char * err = "pure virtual method called\n" ;
     write(2,err,strlen(err));
-    abort();
+    abort();    
+}
+
+extern "C" void
+__cxa_deleted_virtual (void)
+{
+    const char * err = "deleted virtual method called\n" ;
+    write(2,err,strlen(err));
+    abort();    
+}
+
 }

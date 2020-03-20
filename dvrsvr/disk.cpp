@@ -453,7 +453,7 @@ void disk_listday(array <f264name> & flist, struct dvrtime * day, int channel)
                     day->year,
                     day->month,
                     day->day );
-	flist.setsize(0) ;
+	flist.clean() ;
     disk_list264files( "/var/dvr/disks",  flist, date, channel, 0 );
     flist.sort();
     

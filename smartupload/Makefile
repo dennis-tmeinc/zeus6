@@ -9,7 +9,7 @@ HEADERS = $(patsubst %.c, %.h, $(SRCS))
 
 #EXTRA_CFLAGS = -I./curl-7.20.1/include
 CFLAGS += -I$(PROJDIR)/lib/curl
-LDFLAGS += -lcurl -lrt -lpthread
+LDFLAGS += -lcurl -lpthread 
 
 smartftp: smartftp.o upload.o parseconfig.o gforce_peak.o hikfile.o
 	$(CC) $(CFLAGS) -o smartftp smartftp.o upload.o parseconfig.o gforce_peak.o hikfile.o $(LDFLAGS) -Wl,-rpath=.

@@ -32,13 +32,13 @@
 #include <netdb.h>
 #include <sys/times.h>
 
-#include "../cfg.h"
+#include "cfg.h"
 
 #include "mpegps.h"
 
 #include "crypt.h"
 #include "genclass.h"
-#include "cfg.h"
+#include "config.h"
 
 #define SUPPORT_EVENTMARKER 1
 
@@ -80,8 +80,10 @@ extern int system_shutdown;
 extern int g_lowmemory;
 extern char g_hostname[];
 extern char g_usbid[];
+extern int g_runtime;     // mono clock in millis
 
 extern int g_cpu_usage; // cpu usage , 0-100 ;
+extern int build_year ;
 
 // TVS related
 
@@ -505,6 +507,7 @@ extern int cap_channels;
 
 void cap_start();
 void cap_stop();
+void cap_update();
 void cap_restart(int channel);
 void cap_init();
 void cap_uninit();
@@ -1595,7 +1598,6 @@ struct gps
     double gps_direction; // degree
     double gps_latitude;  // degree, + for north, - for south
     double gps_longitud;  // degree, + for east,  - for west
-    double gps_gpstime;   // seconds from 1970-1-1 12:00:00 (utc)
 };
 
 int dio_inputnum();
@@ -1624,11 +1626,11 @@ void dio_mcureboot();
 int isignitionoff();
 int dio_curmode();
 int dio_runmode();
-void get_gps_data(struct gps *g);
+int get_gps_data(struct gps *g);
 double gps_speed(int *gpsvalid_changed);
 int gps_location(double *latitude, double *longitude);
 extern double g_gpsspeed;
-extern int dio_standby_mode;
+extern int dio_norecord ;
 int dio_get_nodiskcheck();
 int dio_get_temperature(int idx);
 void dio_hybridcopy(int on);
@@ -1640,9 +1642,8 @@ void dio_covert_mode(int covert);
 float dio_get_gps_speed();
 // get gforce value
 int dio_get_gforce(float *fb, float *lr, float *ud);
+int dio_gforce_serial();
 
-int get_peak_data(float *fb, float *lr, float *ud);
-int isPeakChanged();
 int isInUSBretrieve();
 int isInhbdcopying();
 int isstandbymode();
